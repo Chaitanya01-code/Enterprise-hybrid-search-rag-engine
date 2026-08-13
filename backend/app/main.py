@@ -3,12 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from .api import auth
-from .documents import upload
+from .api.admin import upload
 
 app = FastAPI()
 
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
-app.include_router(upload.router, prefix="/documents", tags=["documents"])
+app.include_router(upload.router, prefix="/admin", tags=["admin"])
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,3 +21,4 @@ app.add_middleware(
 @app.get("/")
 def home():
     return {"message": "Welcome to Enterprise Hybrid Search RAG Engine"}
+
