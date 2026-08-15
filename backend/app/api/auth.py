@@ -1,33 +1,25 @@
+from typing import Optional
 from pydantic import BaseModel 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query, Depends, HTTPException
+from dotenv import load_dotenv
 
+load_dotenv()
 router = APIRouter()
 
 class LoginSchema(BaseModel):
     username: str
     password: str
+    email: Optional[str] = None
 
-class RegisterSchema(BaseModel):
+class signup(BaseModel):
+    email: str
     username: str
     password: str
     
-@router.post("/register")
-async def register(user: RegisterSchema):
-    return {
-        "message": "User registered successfully",
-        "data": user
-    }
+@router.post("/signup")
+async def register(user: signup):
+    return {"status": "success", "message": "User registered successfully", "user": user.username}
 
-@router.post("/admin/login")
+@router.post("/login")
 async def login(user: LoginSchema):
-    return {
-        "username": user.username,
-        "password": user.password
-    }
-
-@router.post("/user/login")
-async def login(user: LoginSchema):
-    return {
-        "username": user.username,
-        "password": user.password
-    }
+    return {"status": "success", "message": "Login successful", "user": user.username}

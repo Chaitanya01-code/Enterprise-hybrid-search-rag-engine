@@ -1,5 +1,8 @@
 from fastapi import APIRouter, File, UploadFile
+from dotenv import load_dotenv
 
+
+load_dotenv()
 router = APIRouter()
 
 

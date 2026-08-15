@@ -1,13 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-
+from dotenv import load_dotenv
 from .api import auth
 from .api.admin import upload
 
+load_dotenv()
 app = FastAPI()
 
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
+app.include_router(auth.router, tags=["auth_direct"])
 app.include_router(upload.router, prefix="/admin", tags=["admin"])
 
 app.add_middleware(
