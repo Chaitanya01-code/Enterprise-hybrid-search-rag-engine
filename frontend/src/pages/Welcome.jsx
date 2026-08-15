@@ -2,31 +2,45 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Database, Sparkles, Zap, Search,
-  ArrowRight, Bot, Server, FileText, RefreshCw
+  ArrowRight, Bot, Server, FileText, RefreshCw, CheckCircle2
 } from 'lucide-react';
-import { checkBackendHealth } from '../services/api';
+import { checkBackendHealth, sendQuery } from '../services/api';
 
 export default function Welcome() {
   const [testQuery, setTestQuery] = useState('');
   const [queryState, setQueryState] = useState({ loading: false, result: null });
   const [apiPing, setApiPing] = useState(null);
 
-  const handleSimulateSearch = (e) => {
+  const handleSimulateSearch = async (e) => {
     e.preventDefault();
+    if (!testQuery.trim()) return;
     setQueryState({ loading: true, result: null });
-    setTimeout(() => {
+    const start = Date.now();
+    const res = await sendQuery(testQuery, 'user');
+    const latency = `${Date.now() - start}ms`;
+    if (res.success) {
+      const { answer, sources } = res.data;
       setQueryState({
         loading: false,
         result: {
-          answer: "According to the Enterprise Database (Doc ID: COMP-2026-Q3), all workers and clients must adhere to encrypted zero-trust access controls. Vector search matched with 98.4% confidence score across enterprise SQL tables & document repositories.",
-          sources: [
-            { id: "DB-TABLE: compliance_logs", score: "0.984 Confidence" },
-            { id: "S3-STORAGE: policy_v3.pdf",  score: "0.941 Confidence" }
-          ],
-          latency: "42ms"
-        }
+          answer,
+          sources: sources.map(s => ({
+            id: `${s.chunk_name} · Page ${s.page_number ?? 'N/A'} · Chunk #${s.chunk_index}`,
+            score: `${(s.score * 100).toFixed(1)}% Confidence`,
+          })),
+          latency,
+        },
       });
-    }, 900);
+    } else {
+      setQueryState({
+        loading: false,
+        result: {
+          answer: res.error || 'Could not connect to the RAG backend.',
+          sources: [],
+          latency,
+        },
+      });
+    }
   };
 
   const handleTestBackend = async () => {

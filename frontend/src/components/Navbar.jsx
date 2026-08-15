@@ -82,7 +82,7 @@ export default function Navbar() {
                     }`}
                   >
                     <ShieldCheck className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-                    <span style={{ color: 'var(--text-main)' }}>Login</span>
+                    <span style={{ color: 'var(--text-main)' }}>Admin Panel</span>
                   </Link>
                 )}
 
@@ -109,7 +109,7 @@ export default function Navbar() {
                   onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.30)'; }}
                 >
                   <LogOut className="w-4 h-4" />
-                  Sign In
+                  Sign Out
                 </button>
               </>
             ) : (

@@ -4,13 +4,15 @@ from datetime import datetime
 from typing import List, Optional
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Header, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from .. import models
+from ..rag.chunks import build_chunks
+from ..rag.embeddings import save_chunks_with_embeddings
 
 
 # ── Admin guard ───────────────────────────────────────────────────────────────
@@ -55,17 +57,69 @@ class DocumentUpdate(BaseModel):
     tags: Optional[str] = None
 
 
+# ── RAG pipeline background task ─────────────────────────────────────────────
+
+def _run_rag_pipeline(
+    file_bytes: bytes,
+    content_type: str,
+    original_filename: str,
+    document_id: int,
+    db_url: str,
+):
+    """
+    Background task: chunk the document and generate + store embeddings.
+    Runs after the HTTP response has been sent to the client.
+    Uses its own DB session to avoid sharing the request session.
+    """
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    import ssl
+
+    try:
+        # Rebuild the engine for the background session
+        connect_args = {}
+        url = db_url
+        if "postgresql" in url:
+            ssl_ctx = ssl.create_default_context()
+            ssl_ctx.check_hostname = False
+            ssl_ctx.verify_mode = ssl.CERT_NONE
+            connect_args["ssl_context"] = ssl_ctx
+
+        bg_engine = create_engine(url, connect_args=connect_args, pool_pre_ping=True)
+        BgSession = sessionmaker(autocommit=False, autoflush=False, bind=bg_engine)
+        db = BgSession()
+
+        try:
+            chunks = build_chunks(file_bytes, content_type, original_filename, document_id)
+            if chunks:
+                n = save_chunks_with_embeddings(db, document_id, original_filename, chunks)
+                print(f"[RAG] Saved {n} chunks for document {document_id} ({original_filename})")
+            else:
+                print(f"[RAG] No text extracted from document {document_id} ({original_filename})")
+        finally:
+            db.close()
+            bg_engine.dispose()
+
+    except Exception as e:
+        print(f"[RAG] Pipeline error for document {document_id}: {e}")
+
+
 # ── Upload ────────────────────────────────────────────────────────────────────
 
 @router.post("/upload", response_model=DocumentOut, status_code=status.HTTP_201_CREATED)
 async def upload_document(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     description: Optional[str] = None,
     tags: Optional[str] = None,
     db: Session = Depends(get_db),
     _: None = Depends(require_admin),
 ):
-    """Upload any type of document and persist its metadata to the database."""
+    """
+    Upload any supported document.
+    After saving to disk and recording metadata, the RAG pipeline
+    (text extraction → chunking → embedding → DB save) runs in the background.
+    """
     content = await file.read()
     file_size = len(content)
 
@@ -89,6 +143,18 @@ async def upload_document(
     db.add(doc)
     db.commit()
     db.refresh(doc)
+
+    # ── Kick off RAG pipeline in the background ────────────────────────────
+    from ..database import DATABASE_URL as _db_url
+    background_tasks.add_task(
+        _run_rag_pipeline,
+        file_bytes=content,
+        content_type=file.content_type or "application/octet-stream",
+        original_filename=file.filename or unique_name,
+        document_id=doc.id,
+        db_url=_db_url,
+    )
+
     return doc
 
 
@@ -161,6 +227,9 @@ def delete_document(doc_id: int, db: Session = Depends(get_db), _: None = Depend
     doc = db.get(models.Document, doc_id)
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found.")
+
+    # Remove associated chunks
+    db.query(models.DocumentChunk).filter(models.DocumentChunk.document_id == doc_id).delete()
 
     # Best-effort file removal; don't fail if it's already gone
     try:

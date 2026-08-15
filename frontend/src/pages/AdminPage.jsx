@@ -3,14 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import {
   Upload, Trash2, Pencil, Download, FileText, File, Image, FileVideo,
   FileAudio, FileCode, FilePlus, RefreshCw, X, AlertTriangle,
-  CheckCircle2, AlertCircle, ChevronDown, Bot, Send, Shield,
+  CheckCircle2, AlertCircle, ChevronDown, Bot, Send, Shield, User,
   Database, Menu, Search, Tag, AlignLeft, Cpu, LogOut, Sun, Moon,
   BarChart2, PieChart, TrendingUp, HardDrive, Clock,
   Maximize2, Minimize2,
 } from 'lucide-react';
 import {
   listDocuments, uploadDocument, editDocument,
-  deleteDocument, downloadDocumentUrl,
+  deleteDocument, downloadDocumentUrl, sendQuery,
 } from '../services/api';
 import { useUser, useTheme } from '../App';
 
@@ -270,20 +270,33 @@ function ChatPanel() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, thinking]);
 
-  const send = () => {
+  const send = async () => {
     const trimmed = input.trim();
     if (!trimmed || thinking) return;
     setMessages(m => [...m, { role: 'user', text: trimmed }]);
     setInput('');
     setThinking(true);
-    // Placeholder — wire to your RAG endpoint when ready
-    setTimeout(() => {
-      setThinking(false);
+
+    const res = await sendQuery(trimmed, 'admin');
+    setThinking(false);
+
+    if (res.success) {
+      const { answer, sources } = res.data;
+      // Format source citations beneath the answer
+      let fullText = answer;
+      if (sources && sources.length > 0) {
+        const cites = sources
+          .map(s => `• ${s.chunk_name} | Page ${s.page_number ?? 'N/A'} | Chunk #${s.chunk_index} (score: ${s.score})`)
+          .join('\n');
+        fullText = `${answer}\n\n📚 Sources:\n${cites}`;
+      }
+      setMessages(m => [...m, { role: 'assistant', text: fullText }]);
+    } else {
       setMessages(m => [...m, {
         role: 'assistant',
-        text: "I've received your query. The RAG pipeline endpoint is not yet connected — wire `POST /query` here when your backend search engine is ready.",
+        text: `⚠️ Error: ${res.error || 'Failed to get a response from the RAG backend.'}`,
       }]);
-    }, 1200);
+    }
   };
 
   const handleKey = (e) => {

@@ -7,7 +7,7 @@ import {
   Maximize2, Minimize2, RefreshCw, AlertCircle,
 } from 'lucide-react';
 import { useUser, useTheme } from '../App';
-import { listDocumentsUser } from '../services/api';
+import { listDocumentsUser, sendQuery } from '../services/api';
 
 // ── helpers (mirrors AdminPage) ────────────────────────────────────
 
@@ -49,20 +49,32 @@ function ChatPanel({ username }) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, thinking]);
 
-  const send = () => {
+  const send = async () => {
     const trimmed = input.trim();
     if (!trimmed || thinking) return;
     setMessages(m => [...m, { role: 'user', text: trimmed }]);
     setInput('');
     setThinking(true);
-    // Placeholder — wire to POST /query when RAG backend is ready
-    setTimeout(() => {
-      setThinking(false);
+
+    const res = await sendQuery(trimmed, 'user');
+    setThinking(false);
+
+    if (res.success) {
+      const { answer, sources } = res.data;
+      let fullText = answer;
+      if (sources && sources.length > 0) {
+        const cites = sources
+          .map(s => `• ${s.chunk_name} | Page ${s.page_number ?? 'N/A'} | Chunk #${s.chunk_index} (score: ${s.score})`)
+          .join('\n');
+        fullText = `${answer}\n\n📚 Sources:\n${cites}`;
+      }
+      setMessages(m => [...m, { role: 'assistant', text: fullText }]);
+    } else {
       setMessages(m => [...m, {
         role: 'assistant',
-        text: "I've received your query. The RAG pipeline endpoint is not yet connected — wire `POST /query` here when your backend search engine is ready.",
+        text: `⚠️ Error: ${res.error || 'Failed to get a response from the RAG backend.'}`,
       }]);
-    }, 1200);
+    }
   };
 
   const handleKey = (e) => {

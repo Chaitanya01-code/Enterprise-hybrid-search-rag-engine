@@ -112,3 +112,25 @@ export const signupUser = async (userData) => {
     }
   }
 };
+
+// ── RAG Query (POST /query) ───────────────────────────────────────
+
+/**
+ * Send a question to the RAG assistant.
+ * @param {string} question      - The user's question.
+ * @param {string} role          - Caller's role: 'user' | 'admin'.
+ * @param {number|null} documentId - Optional: scope search to one document.
+ * @returns {{ success, data: { answer, sources, chunks_found } } | { success: false, error }}
+ */
+export const sendQuery = async (question, role = 'user', documentId = null) => {
+  try {
+    const payload = { question, top_k: 5 };
+    if (documentId) payload.document_id = documentId;
+    const res = await axios.post(`${BACKEND_URL}/query`, payload, {
+      headers: { 'X-User-Role': role },
+    });
+    return { success: true, data: res.data };
+  } catch (error) {
+    return { success: false, error: error.response?.data?.detail || error.message };
+  }
+};
