@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from .api import auth
 from .api import admin
+from .api import user
 from .database import engine, Base
 from . import models
 
@@ -18,6 +19,7 @@ app = FastAPI()
 
 app.include_router(auth.router, tags=["auth"])
 app.include_router(admin.router, prefix="/admin", tags=["admin"])
+app.include_router(user.router,  prefix="/user",  tags=["user"])
 
 app.add_middleware(
     CORSMiddleware,

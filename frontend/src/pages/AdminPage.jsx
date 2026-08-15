@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Upload, Trash2, Pencil, Download, FileText, File, Image, FileVideo,
   FileAudio, FileCode, FilePlus, RefreshCw, X, AlertTriangle,
   CheckCircle2, AlertCircle, ChevronDown, Bot, Send, Shield,
   Database, Menu, Search, Tag, AlignLeft, Cpu, LogOut, Sun, Moon,
+  BarChart2, PieChart, TrendingUp, HardDrive, Clock,
+  Maximize2, Minimize2,
 } from 'lucide-react';
 import {
   listDocuments, uploadDocument, editDocument,
@@ -381,6 +383,188 @@ function ChatPanel() {
   );
 }
 
+// ── Analysis Panel ─────────────────────────────────────────────────
+function AnalysisPanel({ docs }) {
+  // ── derived stats ──────────────────────────────────────────────
+  const stats = useMemo(() => {
+    const total = docs.length;
+    const totalSize = docs.reduce((s, d) => s + d.size, 0);
+
+    // file type breakdown
+    const typeMap = {};
+    docs.forEach(d => {
+      const key = d.content_type.split('/')[0] || 'other';
+      typeMap[key] = (typeMap[key] || 0) + 1;
+    });
+    const types = Object.entries(typeMap)
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, count]) => ({ label, count, pct: total ? Math.round((count / total) * 100) : 0 }));
+
+    // tag cloud
+    const tagMap = {};
+    docs.forEach(d => {
+      if (!d.tags) return;
+      d.tags.split(',').forEach(t => {
+        const tag = t.trim().toLowerCase();
+        if (tag) tagMap[tag] = (tagMap[tag] || 0) + 1;
+      });
+    });
+    const tags = Object.entries(tagMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20);
+
+    // recent uploads (last 5)
+    const recent = [...docs]
+      .sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at))
+      .slice(0, 5);
+
+    // largest files (top 5)
+    const largest = [...docs]
+      .sort((a, b) => b.size - a.size)
+      .slice(0, 5);
+
+    return { total, totalSize, types, tags, recent, largest };
+  }, [docs]);
+
+  const TYPE_COLORS = {
+    application: 'var(--accent-primary)',
+    image:       'var(--accent-purple)',
+    video:       'var(--accent-pink)',
+    audio:       'var(--accent-emerald)',
+    text:        'var(--accent-cyan)',
+    other:       'var(--text-dim)',
+  };
+
+  if (docs.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-3 py-12 text-center px-6">
+        <BarChart2 className="w-12 h-12" style={{ color: 'var(--text-dim)', opacity: 0.4 }} />
+        <p className="text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>No data to analyse yet.</p>
+        <p className="text-xs" style={{ color: 'var(--text-dim)' }}>Upload documents to see analytics here.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full overflow-y-auto" style={{ minHeight: 0 }}>
+      {/* Header */}
+      <div className="flex items-center gap-3 px-5 py-4 flex-shrink-0"
+        style={{ borderBottom: '1px solid var(--glass-border)' }}>
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+          style={{ background: 'linear-gradient(135deg,var(--btn-grad-from),var(--accent-primary))' }}>
+          <BarChart2 className="w-4.5 h-4.5 text-white" />
+        </div>
+        <div>
+          <p className="font-heading font-bold text-sm" style={{ color: 'var(--text-main)' }}>Document Analysis</p>
+          <p className="text-xs font-mono" style={{ color: 'var(--text-dim)' }}>Storage · Types · Tags · Recency</p>
+        </div>
+      </div>
+
+      <div className="px-5 py-4 flex flex-col gap-5">
+
+        {/* ── KPI cards ── */}
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { label: 'Total Files',    value: stats.total,                    icon: <FileText  className="w-4 h-4" />, color: 'var(--accent-primary)' },
+            { label: 'Total Storage',  value: formatBytes(stats.totalSize),   icon: <HardDrive className="w-4 h-4" />, color: 'var(--accent-purple)' },
+            { label: 'File Types',     value: stats.types.length,             icon: <PieChart  className="w-4 h-4" />, color: 'var(--accent-cyan)' },
+            { label: 'Unique Tags',    value: stats.tags.length,              icon: <Tag       className="w-4 h-4" />, color: 'var(--accent-emerald)' },
+          ].map(card => (
+            <div key={card.label} className="glass-panel-3d rounded-xl p-4 flex flex-col gap-1"
+              style={{ border: '1px solid var(--glass-border)' }}>
+              <div className="flex items-center gap-2 mb-1">
+                <span style={{ color: card.color }}>{card.icon}</span>
+                <span className="text-xs font-mono uppercase tracking-wider" style={{ color: 'var(--text-dim)' }}>{card.label}</span>
+              </div>
+              <span className="text-2xl font-heading font-extrabold" style={{ color: 'var(--text-main)' }}>{card.value}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* ── File type breakdown ── */}
+        <div className="glass-panel-3d rounded-xl p-4" style={{ border: '1px solid var(--glass-border)' }}>
+          <p className="font-heading font-bold text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--text-main)' }}>
+            <PieChart className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} /> File Type Breakdown
+          </p>
+          <div className="flex flex-col gap-2">
+            {stats.types.map(t => (
+              <div key={t.label}>
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="font-semibold capitalize" style={{ color: 'var(--text-body)' }}>{t.label}</span>
+                  <span style={{ color: 'var(--text-dim)' }}>{t.count} file{t.count !== 1 ? 's' : ''} · {t.pct}%</span>
+                </div>
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--bg-input)' }}>
+                  <div className="h-full rounded-full transition-all duration-500"
+                    style={{ width: `${t.pct}%`, background: TYPE_COLORS[t.label] || TYPE_COLORS.other }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Tag cloud ── */}
+        {stats.tags.length > 0 && (
+          <div className="glass-panel-3d rounded-xl p-4" style={{ border: '1px solid var(--glass-border)' }}>
+            <p className="font-heading font-bold text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--text-main)' }}>
+              <Tag className="w-4 h-4" style={{ color: 'var(--accent-purple)' }} /> Tag Cloud
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {stats.tags.map(([tag, count]) => (
+                <span key={tag}
+                  className="px-2.5 py-1 rounded-full text-xs font-mono"
+                  style={{
+                    background: 'rgba(109,40,217,0.10)',
+                    border: '1px solid rgba(109,40,217,0.25)',
+                    color: 'var(--accent-purple)',
+                    fontSize: `${Math.min(0.85 + count * 0.05, 1.1)}rem`,
+                  }}>
+                  {tag} <span style={{ opacity: 0.6 }}>×{count}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Largest files ── */}
+        <div className="glass-panel-3d rounded-xl p-4" style={{ border: '1px solid var(--glass-border)' }}>
+          <p className="font-heading font-bold text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--text-main)' }}>
+            <TrendingUp className="w-4 h-4" style={{ color: 'var(--accent-cyan)' }} /> Largest Files
+          </p>
+          <div className="flex flex-col gap-2">
+            {stats.largest.map((doc, i) => (
+              <div key={doc.id} className="flex items-center gap-3 text-xs">
+                <span className="w-5 h-5 rounded-full flex items-center justify-center font-mono font-bold flex-shrink-0"
+                  style={{ background: 'var(--bg-input)', color: 'var(--accent-primary)', fontSize: '0.65rem' }}>
+                  {i + 1}
+                </span>
+                <span className="flex-1 truncate font-semibold" style={{ color: 'var(--text-body)' }}>{doc.original_filename}</span>
+                <span className="font-mono flex-shrink-0" style={{ color: 'var(--text-dim)' }}>{formatBytes(doc.size)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Recent uploads ── */}
+        <div className="glass-panel-3d rounded-xl p-4" style={{ border: '1px solid var(--glass-border)' }}>
+          <p className="font-heading font-bold text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--text-main)' }}>
+            <Clock className="w-4 h-4" style={{ color: 'var(--accent-emerald)' }} /> Recent Uploads
+          </p>
+          <div className="flex flex-col gap-2">
+            {stats.recent.map(doc => (
+              <div key={doc.id} className="flex items-center gap-3 text-xs">
+                <div className="flex-shrink-0">{fileIcon(doc.content_type)}</div>
+                <span className="flex-1 truncate font-semibold" style={{ color: 'var(--text-body)' }}>{doc.original_filename}</span>
+                <span className="font-mono flex-shrink-0" style={{ color: 'var(--text-dim)' }}>{formatDate(doc.uploaded_at)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
 // ── Document Row ───────────────────────────────────────────────────
 function DocRow({ doc, onEdit, onDelete }) {
   const [expanded, setExpanded] = useState(false);
@@ -465,6 +649,50 @@ export default function AdminPage() {
   const [deleting, setDeleting] = useState(false);
   const [search, setSearch] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [rightTab, setRightTab] = useState('chat'); // 'chat' | 'analysis'
+
+  // ── Resizable panels ──────────────────────────────────────────────
+  // layout: 'split' | 'left-full' | 'right-full'
+  const [layout, setLayout] = useState('split');
+  const [leftWidth, setLeftWidth] = useState(400); // px, used only in split mode
+  const MIN_W = 260;  // minimum width for either panel
+  const bodyRef = useRef(null);
+  const dragRef = useRef({ active: false, startX: 0, startW: 0 });
+
+  const startDrag = useCallback((clientX) => {
+    dragRef.current = { active: true, startX: clientX, startW: leftWidth };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }, [leftWidth]);
+
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!dragRef.current.active) return;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const bodyW = bodyRef.current?.offsetWidth || window.innerWidth;
+      const newW = Math.min(
+        Math.max(dragRef.current.startW + (clientX - dragRef.current.startX), MIN_W),
+        bodyW - MIN_W,
+      );
+      setLeftWidth(newW);
+    };
+    const onUp = () => {
+      if (!dragRef.current.active) return;
+      dragRef.current.active = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+    };
+  }, []);
 
   const showToast = useCallback((type, text) => {
     setToast({ type, text });
@@ -607,11 +835,20 @@ export default function AdminPage() {
       </header>
 
       {/* ── Two-panel body ───────────────────────────────────────── */}
-      <div className="flex flex-1 overflow-hidden">
+      <div ref={bodyRef} className="flex flex-1 overflow-hidden" style={{ position: 'relative' }}>
 
       {/* ── Left Panel: Documents ────────────────────────────────── */}
-      <div className="flex flex-col w-full md:w-[380px] lg:w-[420px] flex-shrink-0 h-full"
-        style={{ borderRight: '1px solid var(--glass-border)', background: 'var(--bg-card)', backdropFilter: 'blur(20px)' }}>
+      <div className="flex flex-col flex-shrink-0 h-full transition-all duration-200"
+        style={{
+          width: layout === 'left-full'  ? '100%'
+               : layout === 'right-full' ? '0px'
+               : `${leftWidth}px`,
+          minWidth: layout === 'right-full' ? 0 : MIN_W,
+          overflow: layout === 'right-full' ? 'hidden' : undefined,
+          borderRight: '1px solid var(--glass-border)',
+          background: 'var(--bg-card)',
+          backdropFilter: 'blur(20px)',
+        }}>
 
         {/* Left Header */}
         <div className="flex items-center gap-3 px-4 py-4 flex-shrink-0"
@@ -627,9 +864,10 @@ export default function AdminPage() {
               <div className="absolute top-11 left-0 glass-panel-3d rounded-xl overflow-hidden z-30 min-w-[180px]"
                 style={{ border: '1px solid var(--glass-border)' }}>
                 {[
-                  { label: 'Upload Document', icon: <Upload className="w-3.5 h-3.5" />, action: () => { setShowUpload(true); setMenuOpen(false); } },
-                  { label: 'Refresh List',    icon: <RefreshCw className="w-3.5 h-3.5" />, action: () => { fetchDocs(); setMenuOpen(false); } },
-                ].map(item => (
+                   { label: 'Upload Document', icon: <Upload    className="w-3.5 h-3.5" />, action: () => { setShowUpload(true); setMenuOpen(false); } },
+                   { label: 'Refresh List',    icon: <RefreshCw className="w-3.5 h-3.5" />, action: () => { fetchDocs(); setMenuOpen(false); } },
+                   { label: 'Analysis',        icon: <BarChart2 className="w-3.5 h-3.5" />, action: () => { setRightTab('analysis'); setMenuOpen(false); } },
+                 ].map(item => (
                   <button key={item.label} onClick={item.action}
                     className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left transition-colors hover:bg-[rgba(2,132,199,0.08)]"
                     style={{ color: 'var(--text-main)', background: 'none', border: 'none', cursor: 'pointer' }}>
@@ -641,7 +879,7 @@ export default function AdminPage() {
             )}
           </div>
 
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <h2 className="font-heading font-bold text-base" style={{ color: 'var(--text-main)' }}>
               Documents
             </h2>
@@ -653,6 +891,17 @@ export default function AdminPage() {
           <button onClick={() => setShowUpload(s => !s)}
             className="btn-glass-primary btn-glass-sm flex items-center gap-1.5 text-xs">
             <FilePlus className="w-3.5 h-3.5" /> Upload
+          </button>
+
+          {/* Maximize / Restore button */}
+          <button
+            onClick={() => setLayout(l => l === 'left-full' ? 'split' : 'left-full')}
+            className="theme-toggle w-8 h-8 flex items-center justify-center flex-shrink-0"
+            title={layout === 'left-full' ? 'Restore split view' : 'Maximize documents panel'}>
+            {layout === 'left-full'
+              ? <Minimize2 className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />
+              : <Maximize2 className="w-3.5 h-3.5" style={{ color: 'var(--text-dim)' }} />
+            }
           </button>
         </div>
 
@@ -715,9 +964,77 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* ── Right Panel: AI Chat ─────────────────────────────────── */}
-      <div className="hidden md:flex flex-1 flex-col h-full" style={{ background: 'var(--bg-page)', minWidth: 0 }}>
-        <ChatPanel />
+      {/* ── Drag divider ─────────────────────────────────────────── */}
+      {layout === 'split' && (
+        <div
+          onMouseDown={e => { e.preventDefault(); startDrag(e.clientX); }}
+          onTouchStart={e => startDrag(e.touches[0].clientX)}
+          style={{
+            width: '5px',
+            flexShrink: 0,
+            cursor: 'col-resize',
+            background: 'var(--glass-border)',
+            position: 'relative',
+            zIndex: 10,
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-primary)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'var(--glass-border)'; }}
+          title="Drag to resize panels"
+        />
+      )}
+
+      {/* ── Right Panel: Chat / Analysis tabs ───────────────────── */}
+      <div className="flex flex-1 flex-col h-full transition-all duration-200"
+        style={{
+          background: 'var(--bg-page)',
+          minWidth: layout === 'left-full' ? 0 : MIN_W,
+          width: layout === 'left-full' ? '0px' : undefined,
+          overflow: layout === 'left-full' ? 'hidden' : undefined,
+          display: layout === 'left-full' ? 'none' : 'flex',
+        }}>
+
+        {/* Tab bar */}
+        <div className="flex items-center flex-shrink-0 px-4 pt-3 gap-2"
+          style={{ borderBottom: '1px solid var(--glass-border)', background: 'var(--bg-card)' }}>
+          <div className="flex gap-2 flex-1">
+            {[
+              { id: 'chat',     label: 'AI Chat',  icon: <Bot       className="w-3.5 h-3.5" /> },
+              { id: 'analysis', label: 'Analysis', icon: <BarChart2 className="w-3.5 h-3.5" /> },
+            ].map(tab => (
+              <button key={tab.id} onClick={() => setRightTab(tab.id)}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-heading font-semibold rounded-t-lg transition-all duration-150"
+                style={{
+                  color:        rightTab === tab.id ? 'var(--accent-primary)' : 'var(--text-muted)',
+                  background:   rightTab === tab.id ? 'var(--bg-page)'        : 'transparent',
+                  border:       'none',
+                  borderBottom: rightTab === tab.id ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                  cursor:       'pointer',
+                }}>
+                <span style={{ color: rightTab === tab.id ? 'var(--accent-primary)' : 'var(--text-dim)' }}>{tab.icon}</span>
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Maximize / Restore button */}
+          <button
+            onClick={() => setLayout(l => l === 'right-full' ? 'split' : 'right-full')}
+            className="theme-toggle w-8 h-8 flex items-center justify-center flex-shrink-0 mb-1"
+            title={layout === 'right-full' ? 'Restore split view' : 'Maximize this panel'}>
+            {layout === 'right-full'
+              ? <Minimize2 className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />
+              : <Maximize2 className="w-3.5 h-3.5" style={{ color: 'var(--text-dim)' }} />
+            }
+          </button>
+        </div>
+
+        {/* Tab content */}
+        <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+          {rightTab === 'chat'     && <ChatPanel />}
+          {rightTab === 'analysis' && <AnalysisPanel docs={docs} />}
+        </div>
+
       </div>
 
       </div>{/* end two-panel body */}

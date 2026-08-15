@@ -4,13 +4,24 @@ from datetime import datetime
 from typing import List, Optional
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from .. import models
+
+
+# ── Admin guard ───────────────────────────────────────────────────────────────
+
+def require_admin(x_user_role: str = Header(default="")):
+    """Dependency that rejects any request whose X-User-Role header is not 'admin'."""
+    if x_user_role.lower() != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required. You do not have permission to access this resource.",
+        )
 
 load_dotenv()
 
@@ -52,6 +63,7 @@ async def upload_document(
     description: Optional[str] = None,
     tags: Optional[str] = None,
     db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
 ):
     """Upload any type of document and persist its metadata to the database."""
     content = await file.read()
@@ -87,6 +99,7 @@ def list_documents(
     skip: int = 0,
     limit: int = 50,
     db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
 ):
     """Return a paginated list of all uploaded documents."""
     return db.query(models.Document).offset(skip).limit(limit).all()
@@ -95,7 +108,7 @@ def list_documents(
 # ── View / Download ───────────────────────────────────────────────────────────
 
 @router.get("/documents/{doc_id}", response_model=DocumentOut)
-def view_document(doc_id: int, db: Session = Depends(get_db)):
+def view_document(doc_id: int, db: Session = Depends(get_db), _: None = Depends(require_admin)):
     """Return metadata for a single document."""
     doc = db.get(models.Document, doc_id)
     if not doc:
@@ -104,7 +117,7 @@ def view_document(doc_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/documents/{doc_id}/download")
-def download_document(doc_id: int, db: Session = Depends(get_db)):
+def download_document(doc_id: int, db: Session = Depends(get_db), _: None = Depends(require_admin)):
     """Stream the raw file back to the caller."""
     doc = db.get(models.Document, doc_id)
     if not doc:
@@ -121,7 +134,7 @@ def download_document(doc_id: int, db: Session = Depends(get_db)):
 # ── Edit ──────────────────────────────────────────────────────────────────────
 
 @router.patch("/documents/{doc_id}", response_model=DocumentOut)
-def edit_document(doc_id: int, payload: DocumentUpdate, db: Session = Depends(get_db)):
+def edit_document(doc_id: int, payload: DocumentUpdate, db: Session = Depends(get_db), _: None = Depends(require_admin)):
     """Update filename, description, or tags of an existing document."""
     doc = db.get(models.Document, doc_id)
     if not doc:
@@ -143,7 +156,7 @@ def edit_document(doc_id: int, payload: DocumentUpdate, db: Session = Depends(ge
 # ── Delete ────────────────────────────────────────────────────────────────────
 
 @router.delete("/documents/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_document(doc_id: int, db: Session = Depends(get_db)):
+def delete_document(doc_id: int, db: Session = Depends(get_db), _: None = Depends(require_admin)):
     """Remove a document's metadata from the database and its file from disk."""
     doc = db.get(models.Document, doc_id)
     if not doc:

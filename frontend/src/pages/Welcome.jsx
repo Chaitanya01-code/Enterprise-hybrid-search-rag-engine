@@ -7,7 +7,7 @@ import {
 import { checkBackendHealth } from '../services/api';
 
 export default function Welcome() {
-  const [testQuery, setTestQuery] = useState('What are the Q3 enterprise compliance protocols?');
+  const [testQuery, setTestQuery] = useState('');
   const [queryState, setQueryState] = useState({ loading: false, result: null });
   const [apiPing, setApiPing] = useState(null);
 
