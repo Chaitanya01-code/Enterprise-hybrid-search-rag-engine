@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Cpu, LogIn, UserPlus, Server, Sun, Moon } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Cpu, LogIn, UserPlus, Server, Sun, Moon, ShieldCheck, LogOut } from 'lucide-react';
 import { checkBackendHealth } from '../services/api';
-import { useTheme } from '../App';
+import { useTheme, useUser } from '../App';
 
 export default function Navbar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { dark, toggle } = useTheme();
+  const { user, setUser } = useUser();
   const [backendStatus, setBackendStatus] = useState({ status: 'checking', message: 'Checking System Status...' });
 
   useEffect(() => {
@@ -20,6 +22,13 @@ export default function Navbar() {
     return () => { isMounted = false; clearInterval(interval); };
   }, []);
 
+  const handleLogout = () => {
+    setUser(null);
+    navigate('/login');
+  };
+
+  const isAdmin = user?.role === 'admin';
+
   return (
     <header className="sticky top-0 z-50 px-4 pt-4 pb-2 md:px-8">
       <div className="glass-panel-3d nav-tab max-w-7xl mx-auto px-5 py-3.5">
@@ -27,7 +36,7 @@ export default function Navbar() {
         {/* ── Top row: Logo left · Actions right ── */}
         <div className="flex items-center justify-between gap-4">
 
-          {/* Brand Logo — always top-left */}
+          {/* Brand Logo */}
           <Link to="/" className="flex items-center gap-3 group flex-shrink-0">
             <div className="w-11 h-11 rounded-xl p-0.5 shadow-md group-hover:scale-105 transition-transform duration-300"
               style={{ background: 'linear-gradient(135deg, var(--btn-grad-from), var(--accent-primary))' }}>
@@ -49,7 +58,7 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* Right: Status + Auth + Toggle */}
+          {/* Right side */}
           <div className="flex items-center gap-3">
 
             {/* Backend Status Pill */}
@@ -61,22 +70,67 @@ export default function Navbar() {
               </span>
             </div>
 
-            {/* Login */}
-            <Link
-              to="/login"
-              className={`btn-glass-secondary btn-glass-sm nav-tab flex items-center gap-2 ${
-                location.pathname === '/login' ? 'ring-1 ring-amber-600/40' : ''
-              }`}
-            >
-              <LogIn className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
-              <span style={{ color: 'var(--text-main)' }}>Login</span>
-            </Link>
+            {/* ── LOGGED IN ── */}
+            {user ? (
+              <>
+                {/* Admin Panel — admins only */}
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    className={`btn-glass-secondary btn-glass-sm nav-tab flex items-center gap-2 ${
+                      location.pathname === '/admin' ? 'ring-1 ring-[rgba(2,132,199,0.50)]' : ''
+                    }`}
+                  >
+                    <ShieldCheck className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                    <span style={{ color: 'var(--text-main)' }}>Login</span>
+                  </Link>
+                )}
 
-            {/* Sign Up */}
-            <Link to="/signup" className="btn-glass-primary btn-glass-sm nav-tab flex items-center gap-2">
-              <UserPlus className="w-4 h-4 text-white" />
-              <span className="text-white">Sign Up</span>
-            </Link>
+                {/* Sign In (logout action) */}
+                <button
+                  onClick={handleLogout}
+                  className="btn-glass-sm nav-tab flex items-center gap-2"
+                  style={{
+                    background: 'rgba(239,68,68,0.08)',
+                    border: '1px solid rgba(239,68,68,0.30)',
+                    color: '#dc2626',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    padding: '8px 16px',
+                    fontFamily: 'var(--font-heading)',
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.16)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.55)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.30)'; }}
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sign In
+                </button>
+              </>
+            ) : (
+              /* ── LOGGED OUT ── */
+              <>
+                <Link
+                  to="/login"
+                  className={`btn-glass-secondary btn-glass-sm nav-tab flex items-center gap-2 ${
+                    location.pathname === '/login' ? 'ring-1 ring-amber-600/40' : ''
+                  }`}
+                >
+                  <LogIn className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />
+                  <span style={{ color: 'var(--text-main)' }}>Login</span>
+                </Link>
+
+                <Link to="/signup" className="btn-glass-primary btn-glass-sm nav-tab flex items-center gap-2">
+                  <UserPlus className="w-4 h-4 text-white" />
+                  <span className="text-white">Sign Up</span>
+                </Link>
+              </>
+            )}
 
             {/* Dark / Light Toggle */}
             <button

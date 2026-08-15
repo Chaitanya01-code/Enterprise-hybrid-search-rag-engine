@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LogIn, User, Lock, ArrowRight, AlertCircle, CheckCircle2, RefreshCw, Server } from 'lucide-react';
+import { LogIn, User, Lock, ArrowRight, AlertCircle, CheckCircle2, RefreshCw, Server, Shield } from 'lucide-react';
 import { loginUser } from '../services/api';
+import { useUser } from '../App';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { setUser } = useUser();
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [statusState, setStatusState] = useState({ loading: false, error: null, success: null });
 
@@ -19,8 +21,19 @@ export default function Login() {
     setStatusState({ loading: true, error: null, success: null });
     const res = await loginUser({ username: formData.username, password: formData.password });
     if (res.success) {
-      setStatusState({ loading: false, error: null, success: 'Authentication successful! Welcome.' });
-      setTimeout(() => navigate('/'), 1500);
+      const userData = res.data.user;
+      // Persist logged-in user to global context (+ localStorage via App.jsx effect)
+      setUser(userData);
+
+      const isAdmin = userData?.role === 'admin';
+      setStatusState({
+        loading: false,
+        error: null,
+        success: isAdmin
+          ? 'Admin access granted. Redirecting to admin panel…'
+          : 'Login successful! Loading your workspace…',
+      });
+      setTimeout(() => navigate(isAdmin ? '/admin' : '/user'), 1200);
     } else {
       setStatusState({ loading: false, error: res.error || 'Failed to authenticate with backend server.', success: null });
     }
@@ -46,6 +59,11 @@ export default function Login() {
             <Server className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />
             Enterprise RAG Authentication
           </p>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs"
+            style={{ background: 'rgba(2,132,199,0.08)', border: '1px solid rgba(2,132,199,0.20)', color: 'var(--text-dim)' }}>
+            <Shield className="w-3 h-3" style={{ color: 'var(--accent-primary)' }} />
+            Admin accounts are redirected to the admin panel
+          </div>
         </div>
 
         {/* Feedback Messages */}

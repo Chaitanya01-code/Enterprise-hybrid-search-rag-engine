@@ -46,6 +46,8 @@ class signup(BaseModel):
     email: str
     username: str
     password: str
+    role: str = "user"
+  
 
 @router.post("/signup")
 async def register(user: signup, db: Session = Depends(get_db)):
@@ -76,7 +78,8 @@ async def register(user: signup, db: Session = Depends(get_db)):
     db_user = models.User(
         username=user.username,
         email=user.email,
-        password=hash_password(user.password)
+        password=hash_password(user.password),
+        role=user.role
     )
     
     db.add(db_user)
@@ -89,7 +92,8 @@ async def register(user: signup, db: Session = Depends(get_db)):
         "user": {
             "id": db_user.id,
             "username": db_user.username,
-            "email": db_user.email
+            "email": db_user.email,
+            "role": db_user.role
         }
     }
 
@@ -126,6 +130,7 @@ async def login(user: LoginSchema, db: Session = Depends(get_db)):
         "user": {
             "id": db_user.id,
             "username": db_user.username,
-            "email": db_user.email
+            "email": db_user.email,
+            "role": db_user.role
         }
     }

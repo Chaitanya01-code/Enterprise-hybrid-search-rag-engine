@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from .api import auth
-from .api.admin import upload
+from .api import admin
 from .database import engine, Base
 from . import models
 
@@ -17,7 +17,7 @@ except Exception as e:
 app = FastAPI()
 
 app.include_router(auth.router, tags=["auth"])
-app.include_router(upload.router, prefix="/admin", tags=["admin"])
+app.include_router(admin.router, prefix="/admin", tags=["admin"])
 
 app.add_middleware(
     CORSMiddleware,
