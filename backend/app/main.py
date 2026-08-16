@@ -1,14 +1,17 @@
+from dotenv import load_dotenv
+
+# Load .env BEFORE importing any app modules so that os.getenv() calls
+# at module level (e.g. DATABASE_URL in database.py) read the correct values.
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
 from .api import auth
 from .api import admin
 from .api import user
 from .api import query
 from .database import engine, Base
 from . import models
-
-load_dotenv()
 
 # Create tables in PostgreSQL database on application startup
 try:

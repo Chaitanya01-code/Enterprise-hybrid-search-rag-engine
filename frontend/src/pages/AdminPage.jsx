@@ -16,6 +16,182 @@ import { useUser, useTheme } from '../App';
 
 // ── helpers ────────────────────────────────────────────────────────
 
+/**
+ * Renders a markdown string as structured React elements.
+ * Supports: ### headings, **bold**, `inline code`, ``` code blocks,
+ * - / * bullet lists, 1. numbered lists, --- dividers, plain paragraphs.
+ */
+function renderMarkdown(text) {
+  if (!text) return null;
+
+  // Split into lines and process block-level elements
+  const lines = text.split('\n');
+  const elements = [];
+  let i = 0;
+  let key = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // ── fenced code block ──────────────────────────────────────────
+    if (line.trimStart().startsWith('```')) {
+      const codeLines = [];
+      i++;
+      while (i < lines.length && !lines[i].trimStart().startsWith('```')) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      elements.push(
+        <pre key={key++} style={{
+          background: 'rgba(0,0,0,0.18)',
+          border: '1px solid var(--glass-border)',
+          borderRadius: '10px',
+          padding: '12px 14px',
+          overflowX: 'auto',
+          fontSize: '0.78rem',
+          lineHeight: 1.6,
+          color: 'var(--text-main)',
+          margin: '6px 0',
+          whiteSpace: 'pre',
+          fontFamily: 'var(--font-mono, monospace)',
+        }}>
+          {codeLines.join('\n')}
+        </pre>
+      );
+      i++; // skip closing ```
+      continue;
+    }
+
+    // ── horizontal rule ───────────────────────────────────────────
+    if (/^---+$/.test(line.trim())) {
+      elements.push(
+        <hr key={key++} style={{ border: 'none', borderTop: '1px solid var(--glass-border)', margin: '8px 0' }} />
+      );
+      i++;
+      continue;
+    }
+
+    // ── headings (### ## #) ───────────────────────────────────────
+    const headingMatch = line.match(/^(#{1,3})\s+(.+)/);
+    if (headingMatch) {
+      const level = headingMatch[1].length;
+      const sizes   = { 1: '1rem',   2: '0.93rem', 3: '0.87rem' };
+      const margins  = { 1: '10px 0 4px', 2: '8px 0 3px', 3: '6px 0 2px' };
+      elements.push(
+        <div key={key++} style={{
+          fontWeight: 700,
+          fontSize: sizes[level],
+          color: 'var(--text-main)',
+          margin: margins[level],
+          fontFamily: 'var(--font-heading)',
+          lineHeight: 1.35,
+          letterSpacing: '-0.01em',
+        }}>
+          {inlineMarkdown(headingMatch[2])}
+        </div>
+      );
+      i++;
+      continue;
+    }
+
+    // ── bullet list ───────────────────────────────────────────────
+    if (/^(\s*)([-*])\s+/.test(line)) {
+      const listItems = [];
+      while (i < lines.length && /^(\s*)([-*])\s+/.test(lines[i])) {
+        const content = lines[i].replace(/^\s*[-*]\s+/, '');
+        listItems.push(<li key={i}>{inlineMarkdown(content)}</li>);
+        i++;
+      }
+      elements.push(
+        <ul key={key++} style={{
+          margin: '4px 0 4px 4px',
+          paddingLeft: '18px',
+          listStyleType: 'disc',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '2px',
+          color: 'var(--text-body)',
+        }}>
+          {listItems}
+        </ul>
+      );
+      continue;
+    }
+
+    // ── numbered list ─────────────────────────────────────────────
+    if (/^\s*\d+\.\s+/.test(line)) {
+      const listItems = [];
+      while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) {
+        const content = lines[i].replace(/^\s*\d+\.\s+/, '');
+        listItems.push(<li key={i}>{inlineMarkdown(content)}</li>);
+        i++;
+      }
+      elements.push(
+        <ol key={key++} style={{
+          margin: '4px 0 4px 4px',
+          paddingLeft: '20px',
+          listStyleType: 'decimal',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '2px',
+          color: 'var(--text-body)',
+        }}>
+          {listItems}
+        </ol>
+      );
+      continue;
+    }
+
+    // ── blank line ────────────────────────────────────────────────
+    if (line.trim() === '') {
+      // only add spacing if previous element isn't already a spacer
+      if (elements.length > 0) {
+        elements.push(<div key={key++} style={{ height: '4px' }} />);
+      }
+      i++;
+      continue;
+    }
+
+    // ── paragraph ─────────────────────────────────────────────────
+    elements.push(
+      <p key={key++} style={{ margin: '2px 0', lineHeight: 1.65, color: 'var(--text-body)' }}>
+        {inlineMarkdown(line)}
+      </p>
+    );
+    i++;
+  }
+
+  return <div style={{ fontSize: '0.85rem' }}>{elements}</div>;
+}
+
+/**
+ * Processes inline markdown within a single line:
+ * **bold**, *italic*, `code`
+ */
+function inlineMarkdown(text) {
+  if (!text) return null;
+  // Split on bold (**...**), italic (*...*), and inline code (`...`)
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith('**') && part.endsWith('**'))
+      return <strong key={idx} style={{ fontWeight: 700, color: 'var(--text-main)' }}>{part.slice(2, -2)}</strong>;
+    if (part.startsWith('*') && part.endsWith('*'))
+      return <em key={idx} style={{ fontStyle: 'italic' }}>{part.slice(1, -1)}</em>;
+    if (part.startsWith('`') && part.endsWith('`'))
+      return (
+        <code key={idx} style={{
+          background: 'rgba(0,0,0,0.18)',
+          borderRadius: '4px',
+          padding: '1px 5px',
+          fontSize: '0.80rem',
+          fontFamily: 'var(--font-mono, monospace)',
+          color: 'var(--accent-primary)',
+        }}>{part.slice(1, -1)}</code>
+      );
+    return part;
+  });
+}
+
 function formatBytes(bytes) {
   if (bytes === 0) return '0 B';
   const k = 1024;
@@ -270,13 +446,24 @@ function ChatPanel() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, thinking]);
 
+  const isGreeting = (text) =>
+    /^(hi+|hello+|hey+|howdy|greetings|sup|what'?s up)[!?.]*$/i.test(text.trim());
+
   const send = async () => {
     const trimmed = input.trim();
     if (!trimmed || thinking) return;
     setMessages(m => [...m, { role: 'user', text: trimmed }]);
     setInput('');
-    setThinking(true);
 
+    if (isGreeting(trimmed)) {
+      setMessages(m => [...m, {
+        role: 'assistant',
+        text: 'Hello! 👋 What would you like to know?',
+      }]);
+      return;
+    }
+
+    setThinking(true);
     const res = await sendQuery(trimmed, 'admin');
     setThinking(false);
 
@@ -305,25 +492,8 @@ function ChatPanel() {
 
   return (
     <div className="flex flex-col h-full" style={{ minHeight: 0 }}>
-      {/* Header */}
-      <div className="flex items-center gap-3 px-5 py-4 flex-shrink-0"
-        style={{ borderBottom: '1px solid var(--glass-border)' }}>
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-          style={{ background: 'linear-gradient(135deg,var(--btn-grad-from),var(--accent-primary))' }}>
-          <Bot className="w-4.5 h-4.5 text-white" />
-        </div>
-        <div>
-          <p className="font-heading font-bold text-sm" style={{ color: 'var(--text-main)' }}>RAG Assistant</p>
-          <p className="text-xs font-mono" style={{ color: 'var(--text-dim)' }}>AI · Document Intelligence</p>
-        </div>
-        <div className="ml-auto status-pill hidden sm:flex">
-          <span className="status-dot online" />
-          <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>Ready</span>
-        </div>
-      </div>
-
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3" style={{ minHeight: 0 }}>
+      <div className="flex-1 overflow-y-auto px-5 py-5 flex flex-col gap-4" style={{ minHeight: 0 }}>
         {messages.map((m, i) => (
           <div key={i} className={`flex gap-2.5 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
             <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -338,14 +508,14 @@ function ChatPanel() {
                 : <Bot className="w-3.5 h-3.5" style={{ color: 'var(--accent-primary)' }} />
               }
             </div>
-            <div className="max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed"
+            <div className="max-w-[80%] px-4 py-2.5 text-sm leading-relaxed"
               style={{
                 background: m.role === 'user' ? 'rgba(2,132,199,0.12)' : 'var(--bg-card)',
                 border: '1px solid var(--glass-border)',
                 color: 'var(--text-body)',
                 borderRadius: m.role === 'user' ? '18px 4px 18px 18px' : '4px 18px 18px 18px',
               }}>
-              {m.text}
+              {m.role === 'assistant' ? renderMarkdown(m.text) : m.text}
             </div>
           </div>
         ))}
@@ -371,7 +541,7 @@ function ChatPanel() {
       </div>
 
       {/* Input */}
-      <div className="px-4 pb-4 pt-2 flex-shrink-0" style={{ borderTop: '1px solid var(--glass-border)' }}>
+      <div className="px-4 pb-4 pt-3 flex-shrink-0" style={{ borderTop: '1px solid var(--glass-border)' }}>
         <div className="flex gap-2 items-end">
           <textarea
             rows={2}
@@ -582,8 +752,14 @@ function AnalysisPanel({ docs }) {
 function DocRow({ doc, onEdit, onDelete }) {
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className="glass-panel-3d rounded-xl overflow-hidden transition-all duration-200"
-      style={{ border: '1px solid var(--glass-border)' }}>
+    <div className="rounded-xl transition-all duration-200"
+      style={{
+        background: 'var(--bg-card)',
+        backdropFilter: 'blur(20px) saturate(160%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(160%)',
+        border: '1px solid var(--glass-border)',
+        boxShadow: '0 8px 32px -8px rgba(2,132,199,0.12), 0 0 0 1px rgba(0,180,255,0.08) inset, inset 0 1px 1px var(--glass-highlight)',
+      }}>
       {/* Main row */}
       <div className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
         onClick={() => setExpanded(e => !e)}>
@@ -605,7 +781,7 @@ function DocRow({ doc, onEdit, onDelete }) {
 
       {/* Expanded details */}
       {expanded && (
-        <div className="px-4 pb-4 pt-1 flex flex-col gap-3"
+        <div className="px-4 pb-4 pt-2 flex flex-col gap-3"
           style={{ borderTop: '1px solid var(--glass-border)' }}>
           <div className="grid grid-cols-2 gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
             <div><span className="font-semibold" style={{ color: 'var(--text-dim)' }}>Uploaded:</span><br />{formatDate(doc.uploaded_at)}</div>
@@ -629,19 +805,26 @@ function DocRow({ doc, onEdit, onDelete }) {
           </div>
 
           {/* Action buttons */}
-          <div className="flex gap-2 pt-1">
-            <a href={downloadDocumentUrl(doc.id)} target="_blank" rel="noreferrer"
-              className="btn-glass-secondary btn-glass-sm flex items-center gap-1.5 text-xs flex-1 justify-center">
-              <Download className="w-3.5 h-3.5" /> Download
+          <div className="flex gap-2 pt-1" style={{ minHeight: '36px' }}>
+            <a
+              href={downloadDocumentUrl(doc.id)}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-glass-secondary btn-glass-sm flex items-center gap-1.5 text-xs flex-1 justify-center"
+              style={{ minWidth: 0 }}>
+              <Download className="w-3.5 h-3.5" /><span>Download</span>
             </a>
-            <button onClick={() => onEdit(doc)}
-              className="btn-glass-secondary btn-glass-sm flex items-center gap-1.5 text-xs flex-1 justify-center">
-              <Pencil className="w-3.5 h-3.5" /> Edit
+            <button
+              onClick={e => { e.stopPropagation(); onEdit(doc); }}
+              className="btn-glass-secondary btn-glass-sm flex items-center gap-1.5 text-xs flex-1 justify-center"
+              style={{ minWidth: 0 }}>
+              <Pencil className="w-3.5 h-3.5" /><span>Edit</span>
             </button>
-            <button onClick={() => onDelete(doc)}
+            <button
+              onClick={e => { e.stopPropagation(); onDelete(doc); }}
               className="btn-glass-sm flex items-center gap-1.5 text-xs flex-1 justify-center rounded-xl"
-              style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.30)', color: '#dc2626', cursor: 'pointer' }}>
-              <Trash2 className="w-3.5 h-3.5" /> Delete
+              style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.30)', color: '#dc2626', cursor: 'pointer', minWidth: 0 }}>
+              <Trash2 className="w-3.5 h-3.5" /><span>Delete</span>
             </button>
           </div>
         </div>
@@ -1005,10 +1188,11 @@ export default function AdminPage() {
           width: layout === 'left-full' ? '0px' : undefined,
           overflow: layout === 'left-full' ? 'hidden' : undefined,
           display: layout === 'left-full' ? 'none' : 'flex',
+          height: layout === 'left-full' ? 'none' : 'flex',
         }}>
 
         {/* Tab bar */}
-        <div className="flex items-center flex-shrink-0 px-4 pt-3 gap-2"
+        <div className="flex items-center flex-shrink-0 px-4 pt-2 gap-2"
           style={{ borderBottom: '1px solid var(--glass-border)', background: 'var(--bg-card)' }}>
           <div className="flex gap-2 flex-1">
             {[

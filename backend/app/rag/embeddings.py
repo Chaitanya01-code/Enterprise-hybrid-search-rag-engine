@@ -2,32 +2,37 @@
 Embedding generation using the Google Gemini API
 and persistence of document chunks + embeddings to PostgreSQL.
 
-Model used: models/text-embedding-004 (768-dim, free-tier)
+Model used: gemini-embedding-004 (768-dim, free-tier)
+SDK: google-genai (replaces the deprecated google-generativeai package)
 """
 
 import os
 import json
 from typing import Dict, Any, List, Optional
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types as genai_types
 from sqlalchemy.orm import Session
 
 from ..models import DocumentChunk
 
-# ── Gemini setup ─────────────────────────────────────────────────────────────
+# ── Constants ─────────────────────────────────────────────────────────────────
 
-GEMINI_API_KEY = os.getenv("GEMINI_API")
-EMBED_MODEL = "models/text-embedding-004"
-EMBED_TASK_DOC  = "RETRIEVAL_DOCUMENT"
+# NOTE: Do NOT read GEMINI_API at module level — dotenv has not yet been loaded
+# when this module is first imported. Always call os.getenv() at function call time.
+EMBED_MODEL      = "models/gemini-embedding-2"
+EMBED_TASK_DOC   = "RETRIEVAL_DOCUMENT"
 EMBED_TASK_QUERY = "RETRIEVAL_QUERY"
 
-def _get_client():
-    """Return a configured genai client.  Raises if key is missing."""
-    key = GEMINI_API_KEY or os.getenv("GEMINI_API")
+
+# ── Client factory ────────────────────────────────────────────────────────────
+
+def _get_client() -> genai.Client:
+    """Return a configured genai.Client. Raises if the API key is missing."""
+    key = os.getenv("GEMINI_API")  # read at call time so dotenv has already run
     if not key:
         raise RuntimeError("GEMINI_API environment variable is not set.")
-    genai.configure(api_key=key)
-    return genai
+    return genai.Client(api_key=key)
 
 
 # ── Embedding generation ──────────────────────────────────────────────────────
@@ -36,24 +41,20 @@ def embed_texts(texts: List[str], task_type: str = EMBED_TASK_DOC) -> List[List[
     """
     Generate embeddings for a list of texts using Gemini.
     Returns a parallel list of float vectors.
-    Each text is embedded individually to keep SDK compatibility simple.
     """
     client = _get_client()
     vectors: List[List[float]] = []
 
     for text in texts:
-        result = client.embed_content(
+        response = client.models.embed_content(
             model=EMBED_MODEL,
-            content=text,
-            task_type=task_type,
+            contents=text,
+            config=genai_types.EmbedContentConfig(task_type=task_type),
         )
-        # SDK returns EmbedContentResponse with .embedding (single vector as list[float])
-        emb = getattr(result, "embedding", None)
-        if emb is None and isinstance(result, dict):
-            emb = result.get("embedding")
-        if emb is None:
-            raise RuntimeError(f"Unexpected Gemini embedding response for text: {text[:60]}")
-        vectors.append(list(emb))
+        # response.embeddings is a list[ContentEmbedding]; each has a .values field
+        if not response.embeddings:
+            raise RuntimeError(f"Gemini returned no embeddings for text: {text[:60]!r}")
+        vectors.append(list(response.embeddings[0].values))
 
     return vectors
 
@@ -61,17 +62,14 @@ def embed_texts(texts: List[str], task_type: str = EMBED_TASK_DOC) -> List[List[
 def embed_query(query: str) -> List[float]:
     """Embed a single user query string with the RETRIEVAL_QUERY task type."""
     client = _get_client()
-    result = client.embed_content(
+    response = client.models.embed_content(
         model=EMBED_MODEL,
-        content=query,
-        task_type=EMBED_TASK_QUERY,
+        contents=query,
+        config=genai_types.EmbedContentConfig(task_type=EMBED_TASK_QUERY),
     )
-    emb = getattr(result, "embedding", None)
-    if emb is None and isinstance(result, dict):
-        emb = result.get("embedding")
-    if emb is None:
-        raise RuntimeError("Unexpected Gemini embedding response for query.")
-    return list(emb)
+    if not response.embeddings:
+        raise RuntimeError("Gemini returned no embeddings for the query.")
+    return list(response.embeddings[0].values)
 
 
 # ── Cosine similarity (pure Python, no numpy required) ───────────────────────

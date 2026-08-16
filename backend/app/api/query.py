@@ -14,7 +14,7 @@ Accessible by both 'user' and 'admin' roles.
 import os
 from typing import Optional, List
 
-import google.generativeai as genai
+from google import genai
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -80,10 +80,24 @@ def _gemini_answer(prompt: str) -> str:
     api_key = os.getenv("GEMINI_API")
     if not api_key:
         return "Gemini API key is not configured. Please set GEMINI_API in the backend .env file."
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
-    response = model.generate_content(prompt)
-    return response.text.strip()
+
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model="gemini-3.7-flash",
+        contents=prompt,
+    )
+
+    # response.text returns Optional[str] in the new SDK (no exception on blocked responses)
+    text = response.text
+    if text:
+        return text.strip()
+
+    # Surface the finish reason when the model returned no text
+    try:
+        reasons = [str(c.finish_reason) for c in response.candidates]
+        return f"The model did not return an answer (finish_reason: {', '.join(reasons)})."
+    except Exception:
+        return "The model did not return an answer."
 
 
 # ── Query endpoint ────────────────────────────────────────────────────────────
