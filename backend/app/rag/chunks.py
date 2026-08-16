@@ -1,15 +1,3 @@
-"""
-Token-based document chunker.
-
-Strategy:
-  - Split extracted text into tokens using a simple whitespace/punctuation
-    splitter (no external tokenizer dependency).
-  - Produce overlapping windows of TARGET_TOKENS tokens with OVERLAP_TOKENS
-    overlap between consecutive chunks.
-  - Attach per-chunk metadata: page number (if available), chunk index,
-    token count, and source document name.
-"""
-
 import re
 from typing import List, Dict, Any
 
@@ -22,7 +10,7 @@ OVERLAP_TOKENS = 100  # token overlap between consecutive chunks
 def _tokenise(text: str) -> List[str]:
     """Split text into word-level tokens (punctuation attached to words)."""
     return re.findall(r'\S+', text)
-
+    
 
 def _detokenise(tokens: List[str]) -> str:
     return " ".join(tokens)

@@ -1,0 +1,46 @@
+
+services:
+
+  # ── Backend ──────────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rag_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env          # DATABASE_URL, GEMINI_API, UPLOAD_DIR, ...
+    environment:
+      UPLOAD_DIR: /app/uploads  # must match the VOLUME path in the Dockerfile
+    volumes:
+      - uploads_data:/app/uploads
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+
+  # ── Frontend ─────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: dockerfile
+      args:
+        # At build time Vite bakes this URL into the JS bundle.
+        # In production, replace with your real backend domain/IP.
+        VITE_BACKEND_URL: http://localhost:8000
+    container_name: rag_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+# ── Volumes ───────────────────────────────────────────────────────────────────
+volumes:
+  uploads_data:
+    driver: local

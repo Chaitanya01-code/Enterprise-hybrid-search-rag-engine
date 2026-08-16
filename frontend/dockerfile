@@ -1,0 +1,28 @@
+# ── Stage 1: build ────────────────────────────────────────────────────────────
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+# Install dependencies (cached unless package-lock.json changes)
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Copy source and build the production bundle.
+# VITE_BACKEND_URL is injected at build time so the browser JS knows the API address.
+ARG VITE_BACKEND_URL=http://localhost:8000
+ENV VITE_BACKEND_URL=${VITE_BACKEND_URL}
+
+COPY . .
+RUN npm run build
+
+# ── Stage 2: serve ────────────────────────────────────────────────────────────
+FROM node:22-alpine
+
+WORKDIR /app
+
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+
+EXPOSE 5173
+
+CMD ["npx", "vite", "preview", "--host", "0.0.0.0", "--port", "5173"]

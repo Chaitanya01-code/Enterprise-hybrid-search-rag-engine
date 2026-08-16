@@ -1,10 +1,3 @@
-"""
-Embedding generation using the Google Gemini API
-and persistence of document chunks + embeddings to PostgreSQL.
-
-Model used: gemini-embedding-004 (768-dim, free-tier)
-SDK: google-genai (replaces the deprecated google-generativeai package)
-"""
 
 import os
 import json
