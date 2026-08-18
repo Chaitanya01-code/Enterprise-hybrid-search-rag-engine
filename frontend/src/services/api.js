@@ -2,8 +2,6 @@ import axios from 'axios';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
 
-// ── Admin API (requires X-User-Role: admin) ───────────────────────
-
 export const listDocuments = async (skip = 0, limit = 50) => {
   try {
     const res = await axios.get(`${BACKEND_URL}/admin/documents`, {
@@ -82,15 +80,6 @@ export const signupUser = async (userData) => {
   }
 };
 
-// ── RAG Query (POST /query) ───────────────────────────────────────
-
-/**
- * Send a question to the RAG assistant.
- * @param {string} question      - The user's question.
- * @param {string} role          - Caller's role: 'user' | 'admin'.
- * @param {number|null} documentId - Optional: scope search to one document.
- * @returns {{ success, data: { answer, sources, chunks_found } } | { success: false, error }}
- */
 export const sendQuery = async (question, role = 'user', documentId = null) => {
   try {
     const payload = { question, top_k: 5 };

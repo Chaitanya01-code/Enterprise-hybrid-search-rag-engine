@@ -56,10 +56,8 @@ export default function Welcome() {
   return (
     <div className="relative z-10 max-w-7xl mx-auto px-4 py-8 md:py-16 flex flex-col gap-20">
 
-      {/* ── HERO ───────────────────────────────────────────────────── */}
       <section className="flex flex-col items-center text-center gap-8 relative">
 
-        {/* Badge */}
         <div className="status-pill px-4 py-1.5 rounded-full flex items-center gap-2 animate-bounce shadow-sm">
           <Sparkles className="w-4 h-4 animate-spin" style={{ animationDuration: '8s', color: 'var(--accent-primary)' }} />
           <span className="text-xs font-semibold tracking-wider uppercase font-mono"
@@ -68,13 +66,11 @@ export default function Welcome() {
           </span>
         </div>
 
-        {/* Title */}
         <h1 className="font-heading font-black text-4xl sm:text-6xl md:text-7xl tracking-tight max-w-5xl leading-[1.1]"
           style={{ color: 'var(--text-main)' }}>
           Bridge Your <span className="gradient-text">Company Database</span> With Intelligent AI
         </h1>
 
-        {/* Subtitle */}
         <p className="text-base sm:text-xl max-w-3xl leading-relaxed" style={{ color: 'var(--text-body)' }}>
           <strong className="font-semibold" style={{ color: 'var(--accent-primary)' }}>Enterprise RAG</strong> is an
           AI-integrated system designed to seamlessly connect <strong style={{ color: 'var(--text-main)' }}>clients</strong> and{' '}
@@ -82,7 +78,6 @@ export default function Welcome() {
           real-time search, instant document synthesis, and secure access control.
         </p>
 
-        {/* CTAs */}
         <div className="flex flex-wrap items-center justify-center gap-4 mt-2">
           <Link to="/signup" className="btn-glass-primary text-base py-3.5 px-8">
             <span>Get Started Free</span>
@@ -100,7 +95,6 @@ export default function Welcome() {
           </button>
         </div>
 
-        {/* Backend ping toast */}
         {apiPing && (
           <div className={apiPing.error ? 'alert-error mt-2' : 'alert-success mt-2'}>
             <RefreshCw className={`w-4 h-4 shrink-0 ${apiPing.loading ? 'animate-spin' : ''}`} />
@@ -109,10 +103,8 @@ export default function Welcome() {
         )}
       </section>
 
-      {/* ── DEMO SIMULATOR ────────────────────────────────────────── */}
       <section className="glass-panel-3d glass-card-interactive p-6 md:p-10 relative overflow-hidden">
 
-        {/* Header bar */}
         <div className="flex items-center justify-between pb-6 mb-6" style={{ borderBottom: '1px solid var(--glass-border)' }}>
           <div className="flex items-center gap-3">
             <div className="flex gap-2">
@@ -132,7 +124,6 @@ export default function Welcome() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
 
-          {/* Query form */}
           <div className="lg:col-span-5 flex flex-col gap-4">
             <h3 className="font-heading text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--text-main)' }}>
               <Bot className="w-6 h-6" style={{ color: 'var(--accent-primary)' }} />
@@ -166,7 +157,6 @@ export default function Welcome() {
             </form>
           </div>
 
-          {/* Results window */}
           <div className="lg:col-span-7 rounded-xl p-5 min-h-[220px] flex flex-col justify-between"
             style={{ background: 'var(--bg-page-2)', border: '1px solid var(--glass-border)' }}>
             {queryState.loading ? (
@@ -214,7 +204,6 @@ export default function Welcome() {
         </div>
       </section>
 
-      {/* ── FOOTER CTA ────────────────────────────────────────────── */}
       <footer className="glass-panel-3d p-8 md:p-12 text-center flex flex-col items-center gap-6">
         <h3 className="font-heading font-extrabold text-3xl sm:text-4xl" style={{ color: 'var(--text-main)' }}>
           Ready to Connect Your Enterprise Data?

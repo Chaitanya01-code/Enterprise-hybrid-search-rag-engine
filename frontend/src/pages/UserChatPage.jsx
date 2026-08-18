@@ -7,13 +7,6 @@ import {
 import { useUser, useTheme } from '../App';
 import { sendQuery } from '../services/api';
 
-// ── helpers (mirrors AdminPage) ────────────────────────────────────
-
-/**
- * Renders a markdown string as structured React elements.
- * Supports: ### headings, **bold**, `inline code`, ``` code blocks,
- * - / * bullet lists, 1. numbered lists, --- dividers, plain paragraphs.
- */
 function renderMarkdown(text) {
   if (!text) return null;
 
@@ -25,7 +18,6 @@ function renderMarkdown(text) {
   while (i < lines.length) {
     const line = lines[i];
 
-    // fenced code block
     if (line.trimStart().startsWith('```')) {
       const codeLines = [];
       i++;
@@ -54,7 +46,6 @@ function renderMarkdown(text) {
       continue;
     }
 
-    // horizontal rule
     if (/^---+$/.test(line.trim())) {
       elements.push(
         <hr key={key++} style={{ border: 'none', borderTop: '1px solid var(--glass-border)', margin: '8px 0' }} />
@@ -63,7 +54,6 @@ function renderMarkdown(text) {
       continue;
     }
 
-    // headings
     const headingMatch = line.match(/^(#{1,3})\s+(.+)/);
     if (headingMatch) {
       const level = headingMatch[1].length;
@@ -86,7 +76,6 @@ function renderMarkdown(text) {
       continue;
     }
 
-    // bullet list
     if (/^(\s*)([-*])\s+/.test(line)) {
       const listItems = [];
       while (i < lines.length && /^(\s*)([-*])\s+/.test(lines[i])) {
@@ -110,7 +99,6 @@ function renderMarkdown(text) {
       continue;
     }
 
-    // numbered list
     if (/^\s*\d+\.\s+/.test(line)) {
       const listItems = [];
       while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) {
@@ -134,14 +122,12 @@ function renderMarkdown(text) {
       continue;
     }
 
-    // blank line
     if (line.trim() === '') {
       if (elements.length > 0) elements.push(<div key={key++} style={{ height: '4px' }} />);
       i++;
       continue;
     }
 
-    // paragraph
     elements.push(
       <p key={key++} style={{ margin: '2px 0', lineHeight: 1.65, color: 'var(--text-body)' }}>
         {inlineMarkdown(line)}
@@ -198,7 +184,6 @@ function fileIcon(contentType = '') {
   return <File className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />;
 }
 
-// ── Chat Panel ─────────────────────────────────────────────────────
 function ChatPanel({ username }) {
   const [messages, setMessages] = useState([
     {
@@ -253,7 +238,6 @@ function ChatPanel({ username }) {
   return (
     <div className="flex flex-col flex-1 overflow-hidden h-full" style={{ minHeight: 0 }}>
 
-      {/* Chat header */}
       <div className="flex items-center gap-3 px-5 py-4 flex-shrink-0"
         style={{ borderBottom: '1px solid var(--glass-border)', background: 'var(--bg-card)' }}>
         <div className="w-9 h-9 rounded-xl flex items-center justify-center"
@@ -270,7 +254,6 @@ function ChatPanel({ username }) {
         </div>
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-3" style={{ minHeight: 0 }}>
         {messages.map((m, i) => (
           <div key={i} className={`flex gap-2.5 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
@@ -320,7 +303,6 @@ function ChatPanel({ username }) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input bar */}
       <div className="flex-shrink-0 px-4 pb-5 pt-3"
         style={{ borderTop: '1px solid var(--glass-border)' }}>
         <div className="max-w-3xl mx-auto flex gap-2 items-end">
@@ -349,7 +331,6 @@ function ChatPanel({ username }) {
   );
 }
 
-// ── User Chat Page ─────────────────────────────────────────────────
 export default function UserChatPage() {
   const navigate = useNavigate();
   const { user, setUser } = useUser();
@@ -364,7 +345,6 @@ export default function UserChatPage() {
     <div className="flex flex-col h-screen relative z-10 overflow-hidden"
       style={{ fontFamily: 'var(--font-body)' }}>
 
-      {/* ── Header ─────────────────────────────────────────────── */}
       <header className="flex-shrink-0 flex items-center justify-between px-5 py-3"
         style={{
           background: 'var(--bg-card)',
@@ -373,7 +353,6 @@ export default function UserChatPage() {
           boxShadow: '0 1px 0 rgba(0,180,255,0.08)',
         }}>
 
-        {/* Brand */}
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl p-0.5 shadow-md"
             style={{ background: 'linear-gradient(135deg, var(--btn-grad-from), var(--accent-primary))' }}>
@@ -393,16 +372,13 @@ export default function UserChatPage() {
             </span>
           </div>
 
-          {/* Online status */}
           <div className="status-pill hidden sm:flex ml-2">
             <span className="status-dot online" />
             <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>Ready</span>
           </div>
         </div>
 
-        {/* Right actions */}
         <div className="flex items-center gap-2">
-          {/* Username chip */}
           {user?.username && (
             <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-mono px-2.5 py-1 rounded-full"
               style={{
@@ -415,7 +391,6 @@ export default function UserChatPage() {
             </span>
           )}
 
-          {/* Theme toggle */}
           <button onClick={toggle} className="theme-toggle"
             title={dark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             aria-label="Toggle theme">
@@ -425,7 +400,6 @@ export default function UserChatPage() {
             }
           </button>
 
-          {/* Logout */}
           <button
             onClick={handleLogout}
             className="btn-glass-sm flex items-center gap-2"
@@ -450,7 +424,6 @@ export default function UserChatPage() {
         </div>
       </header>
 
-      {/* ── Chat body ──────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden" style={{ background: 'var(--bg-page)' }}>
         <ChatPanel username={user?.username} />
       </div>

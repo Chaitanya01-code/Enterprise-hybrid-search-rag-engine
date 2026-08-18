@@ -22,7 +22,6 @@ export default function Login() {
     const res = await loginUser({ username: formData.username, password: formData.password });
     if (res.success) {
       const userData = res.data.user;
-      // Persist logged-in user to global context (+ localStorage via App.jsx effect)
       setUser(userData);
 
       const isAdmin = userData?.role === 'admin';
@@ -43,7 +42,6 @@ export default function Login() {
     <div className="relative z-10 min-h-[80vh] flex items-center justify-center px-4 py-12">
       <div className="glass-panel-3d glass-card-interactive w-full max-w-md p-8 md:p-10 relative">
 
-        {/* Top Header */}
         <div className="flex flex-col items-center text-center gap-3 mb-8">
           <div className="w-14 h-14 rounded-2xl p-0.5 shadow-lg flex items-center justify-center"
             style={{ background: 'linear-gradient(135deg, var(--btn-grad-from), var(--accent-primary))' }}>
@@ -66,7 +64,6 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Feedback Messages */}
         {statusState.error && (
           <div className="alert-error mb-6">
             <AlertCircle className="w-4 h-4 shrink-0" />
@@ -80,7 +77,6 @@ export default function Login() {
           </div>
         )}
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
 
           <div className="flex flex-col gap-2">
@@ -131,7 +127,6 @@ export default function Login() {
           </button>
         </form>
 
-        {/* Footer */}
         <div className="mt-8 text-center pt-6 text-xs" style={{ borderTop: '1px solid var(--glass-border)', color: 'var(--text-dim)' }}>
           Don't have an enterprise account?{' '}
           <Link to="/signup" className="font-semibold underline underline-offset-4 ml-1 hover:opacity-80"

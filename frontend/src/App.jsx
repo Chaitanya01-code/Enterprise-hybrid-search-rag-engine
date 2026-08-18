@@ -7,15 +7,12 @@ import Signup from './pages/Signup';
 import AdminPage from './pages/AdminPage';
 import UserChatPage from './pages/UserChatPage';
 
-// ─── Theme Context ────────────────────────────────────────────────
 export const ThemeContext = createContext({ dark: false, toggle: () => {} });
 export const useTheme = () => useContext(ThemeContext);
 
-// ─── User / Auth Context ──────────────────────────────────────────
 export const UserContext = createContext({ user: null, setUser: () => {} });
 export const useUser = () => useContext(UserContext);
 
-// ─── Admin-only guard ─────────────────────────────────────────────
 function AdminRoute({ children }) {
   const { user } = useUser();
   if (!user) return <Navigate to="/login" replace />;
@@ -23,7 +20,6 @@ function AdminRoute({ children }) {
   return children;
 }
 
-// ─── User-only guard ──────────────────────────────────────────────
 function UserRoute({ children }) {
   const { user } = useUser();
   if (!user) return <Navigate to="/login" replace />;
@@ -31,7 +27,6 @@ function UserRoute({ children }) {
   return children;
 }
 
-// ─── Layout wrapper — hides Navbar on /admin and /user ───────────
 function Layout({ children }) {
   const location = useLocation();
   const hideNav = location.pathname.startsWith('/admin') || location.pathname.startsWith('/user');

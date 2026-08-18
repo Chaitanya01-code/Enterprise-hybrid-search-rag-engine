@@ -33,10 +33,8 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 px-4 pt-4 pb-2 md:px-8">
       <div className="glass-panel-3d nav-tab max-w-7xl mx-auto px-5 py-3.5">
 
-        {/* ── Top row: Logo left · Actions right ── */}
         <div className="flex items-center justify-between gap-4">
 
-          {/* Brand Logo */}
           <Link to="/" className="flex items-center gap-3 group flex-shrink-0">
             <div className="w-11 h-11 rounded-xl p-0.5 shadow-md group-hover:scale-105 transition-transform duration-300"
               style={{ background: 'linear-gradient(135deg, var(--btn-grad-from), var(--accent-primary))' }}>
@@ -58,10 +56,8 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* Right side */}
           <div className="flex items-center gap-3">
 
-            {/* Backend Status Pill */}
             <div className="status-pill hidden sm:flex" title={backendStatus.message}>
               <span className={`status-dot ${backendStatus.status === 'online' ? 'online' : 'offline'}`} />
               <Server className="w-3.5 h-3.5" style={{ color: 'var(--text-dim)' }} />
@@ -70,10 +66,8 @@ export default function Navbar() {
               </span>
             </div>
 
-            {/* ── LOGGED IN ── */}
             {user ? (
               <>
-                {/* Admin Panel — admins only */}
                 {isAdmin && (
                   <Link
                     to="/admin"
@@ -86,7 +80,6 @@ export default function Navbar() {
                   </Link>
                 )}
 
-                {/* Sign In (logout action) */}
                 <button
                   onClick={handleLogout}
                   className="btn-glass-sm nav-tab flex items-center gap-2"
@@ -113,7 +106,6 @@ export default function Navbar() {
                 </button>
               </>
             ) : (
-              /* ── LOGGED OUT ── */
               <>
                 <Link
                   to="/login"
@@ -132,7 +124,6 @@ export default function Navbar() {
               </>
             )}
 
-            {/* Dark / Light Toggle */}
             <button
               onClick={toggle}
               className="theme-toggle"
