@@ -57,7 +57,6 @@ async def register(user: signup, db: Session = Depends(get_db)):
             detail="Username, email, and password are all required."
         )
 
-    # Check if username or email is already registered in Neon PostgreSQL database
     existing_user = db.query(models.User).filter(
         (models.User.username == user.username) | (models.User.email == user.email)
     ).first()
@@ -74,7 +73,6 @@ async def register(user: signup, db: Session = Depends(get_db)):
                 detail="Email is already registered."
             )
 
-    # Hash password and store user in PostgreSQL database
     db_user = models.User(
         username=user.username,
         email=user.email,
@@ -106,7 +104,6 @@ async def login(user: LoginSchema, db: Session = Depends(get_db)):
             detail="Please provide username/email and password."
         )
 
-    # Search database for matching username or email
     db_user = db.query(models.User).filter(
         (models.User.username == identifier) | (models.User.email == identifier)
     ).first()
@@ -117,7 +114,6 @@ async def login(user: LoginSchema, db: Session = Depends(get_db)):
             detail="User not found. Please check your credentials or sign up."
         )
 
-    # Verify password against database hash
     if not verify_password(user.password, db_user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

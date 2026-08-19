@@ -1,14 +1,11 @@
 import re
 from typing import List, Dict, Any
 
-TARGET_TOKENS = 700   # desired chunk size in tokens
-OVERLAP_TOKENS = 100  # token overlap between consecutive chunks
+TARGET_TOKENS = 700
+OVERLAP_TOKENS = 100
 
-
-# ── Simple whitespace tokeniser ──────────────────────────────────────────────
 
 def _tokenise(text: str) -> List[str]:
-    """Split text into word-level tokens (punctuation attached to words)."""
     return re.findall(r'\S+', text)
     
 
@@ -16,13 +13,7 @@ def _detokenise(tokens: List[str]) -> str:
     return " ".join(tokens)
 
 
-# ── Text extraction helpers ───────────────────────────────────────────────────
-
 def extract_text_from_pdf(file_bytes: bytes) -> List[Dict[str, Any]]:
-    """
-    Extract text page-by-page from a PDF.
-    Returns a list of {page: int, text: str} dicts.
-    """
     try:
         import pypdf
         import io
@@ -39,7 +30,6 @@ def extract_text_from_pdf(file_bytes: bytes) -> List[Dict[str, Any]]:
 
 
 def extract_text_from_docx(file_bytes: bytes) -> List[Dict[str, Any]]:
-    """Extract text from a .docx file as a single logical page."""
     try:
         import docx
         import io
@@ -52,7 +42,6 @@ def extract_text_from_docx(file_bytes: bytes) -> List[Dict[str, Any]]:
 
 
 def extract_text_from_txt(file_bytes: bytes) -> List[Dict[str, Any]]:
-    """Extract text from plain-text file."""
     try:
         text = file_bytes.decode("utf-8", errors="ignore")
         return [{"page": 1, "text": text}] if text.strip() else []
@@ -62,10 +51,6 @@ def extract_text_from_txt(file_bytes: bytes) -> List[Dict[str, Any]]:
 
 
 def extract_text(file_bytes: bytes, content_type: str, filename: str) -> List[Dict[str, Any]]:
-    """
-    Dispatch text extraction based on content_type / filename extension.
-    Returns list of {page, text} dicts.
-    """
     ct = (content_type or "").lower()
     fname = (filename or "").lower()
 
@@ -76,7 +61,6 @@ def extract_text(file_bytes: bytes, content_type: str, filename: str) -> List[Di
     if "text" in ct or fname.endswith((".txt", ".md", ".csv", ".log")):
         return extract_text_from_txt(file_bytes)
 
-    # Fallback: try plain-text decode
     try:
         text = file_bytes.decode("utf-8", errors="ignore")
         if text.strip():
@@ -86,8 +70,6 @@ def extract_text(file_bytes: bytes, content_type: str, filename: str) -> List[Di
     return []
 
 
-# ── Core chunking logic ───────────────────────────────────────────────────────
-
 def chunk_pages(
     pages: List[Dict[str, Any]],
     document_name: str,
@@ -95,16 +77,6 @@ def chunk_pages(
     target: int = TARGET_TOKENS,
     overlap: int = OVERLAP_TOKENS,
 ) -> List[Dict[str, Any]]:
-    """
-    Given a list of {page, text} dicts, produce overlapping token windows.
-
-    Each returned chunk dict:
-        chunk_index   int   — zero-based sequential index across all chunks
-        page_number   int   — source page number
-        chunk_text    str   — chunk text
-        token_count   int   — token count of this chunk
-        metadata      dict  — extra provenance fields
-    """
     chunks: List[Dict[str, Any]] = []
     chunk_index = 0
 
@@ -151,10 +123,6 @@ def build_chunks(
     filename: str,
     document_id: int,
 ) -> List[Dict[str, Any]]:
-    """
-    Full pipeline: extract text → chunk → return list of chunk dicts.
-    Called by the upload handler after saving the file to disk.
-    """
     pages = extract_text(file_bytes, content_type, filename)
     if not pages:
         return []

@@ -15,10 +15,7 @@ from ..rag.chunks import build_chunks
 from ..rag.embeddings import save_chunks_with_embeddings
 
 
-# ── Admin guard ───────────────────────────────────────────────────────────────
-
 def require_admin(x_user_role: str = Header(default="")):
-    """Dependency that rejects any request whose X-User-Role header is not 'admin'."""
     if x_user_role.lower() != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -29,12 +26,9 @@ load_dotenv()
 
 router = APIRouter()
 
-# Directory where uploaded files are stored
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-
-# ── Pydantic schemas ──────────────────────────────────────────────────────────
 
 class DocumentOut(BaseModel):
     id: int
@@ -57,8 +51,6 @@ class DocumentUpdate(BaseModel):
     tags: Optional[str] = None
 
 
-# ── RAG pipeline background task ─────────────────────────────────────────────
-
 def _run_rag_pipeline(
     file_bytes: bytes,
     content_type: str,
@@ -66,17 +58,11 @@ def _run_rag_pipeline(
     document_id: int,
     db_url: str,
 ):
-    """
-    Background task: chunk the document and generate + store embeddings.
-    Runs after the HTTP response has been sent to the client.
-    Uses its own DB session to avoid sharing the request session.
-    """
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
     import ssl
 
     try:
-        # Rebuild the engine for the background session
         connect_args = {}
         url = db_url
         if "postgresql" in url:
@@ -104,8 +90,6 @@ def _run_rag_pipeline(
         print(f"[RAG] Pipeline error for document {document_id}: {e}")
 
 
-# ── Upload ────────────────────────────────────────────────────────────────────
-
 @router.post("/upload", response_model=DocumentOut, status_code=status.HTTP_201_CREATED)
 async def upload_document(
     background_tasks: BackgroundTasks,
@@ -115,15 +99,9 @@ async def upload_document(
     db: Session = Depends(get_db),
     _: None = Depends(require_admin),
 ):
-    """
-    Upload any supported document.
-    After saving to disk and recording metadata, the RAG pipeline
-    (text extraction → chunking → embedding → DB save) runs in the background.
-    """
     content = await file.read()
     file_size = len(content)
 
-    # Generate a unique on-disk filename to avoid collisions
     ext = os.path.splitext(file.filename or "")[1]
     unique_name = f"{uuid.uuid4().hex}{ext}"
     file_path = os.path.join(UPLOAD_DIR, unique_name)
@@ -144,7 +122,6 @@ async def upload_document(
     db.commit()
     db.refresh(doc)
 
-    # ── Kick off RAG pipeline in the background ────────────────────────────
     from ..database import DATABASE_URL as _db_url
     background_tasks.add_task(
         _run_rag_pipeline,
@@ -158,8 +135,6 @@ async def upload_document(
     return doc
 
 
-# ── List ──────────────────────────────────────────────────────────────────────
-
 @router.get("/documents", response_model=List[DocumentOut])
 def list_documents(
     skip: int = 0,
@@ -167,15 +142,11 @@ def list_documents(
     db: Session = Depends(get_db),
     _: None = Depends(require_admin),
 ):
-    """Return a paginated list of all uploaded documents."""
     return db.query(models.Document).offset(skip).limit(limit).all()
 
 
-# ── View / Download ───────────────────────────────────────────────────────────
-
 @router.get("/documents/{doc_id}", response_model=DocumentOut)
 def view_document(doc_id: int, db: Session = Depends(get_db), _: None = Depends(require_admin)):
-    """Return metadata for a single document."""
     doc = db.get(models.Document, doc_id)
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found.")
@@ -184,7 +155,6 @@ def view_document(doc_id: int, db: Session = Depends(get_db), _: None = Depends(
 
 @router.get("/documents/{doc_id}/download")
 def download_document(doc_id: int, db: Session = Depends(get_db), _: None = Depends(require_admin)):
-    """Stream the raw file back to the caller."""
     doc = db.get(models.Document, doc_id)
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found.")
@@ -197,11 +167,8 @@ def download_document(doc_id: int, db: Session = Depends(get_db), _: None = Depe
     )
 
 
-# ── Edit ──────────────────────────────────────────────────────────────────────
-
 @router.patch("/documents/{doc_id}", response_model=DocumentOut)
 def edit_document(doc_id: int, payload: DocumentUpdate, db: Session = Depends(get_db), _: None = Depends(require_admin)):
-    """Update filename, description, or tags of an existing document."""
     doc = db.get(models.Document, doc_id)
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found.")
@@ -219,19 +186,14 @@ def edit_document(doc_id: int, payload: DocumentUpdate, db: Session = Depends(ge
     return doc
 
 
-# ── Delete ────────────────────────────────────────────────────────────────────
-
 @router.delete("/documents/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_document(doc_id: int, db: Session = Depends(get_db), _: None = Depends(require_admin)):
-    """Remove a document's metadata from the database and its file from disk."""
     doc = db.get(models.Document, doc_id)
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found.")
 
-    # Remove associated chunks
     db.query(models.DocumentChunk).filter(models.DocumentChunk.document_id == doc_id).delete()
 
-    # Best-effort file removal; don't fail if it's already gone
     try:
         if os.path.exists(doc.file_path):
             os.remove(doc.file_path)

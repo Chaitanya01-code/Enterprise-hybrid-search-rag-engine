@@ -1,7 +1,5 @@
 from dotenv import load_dotenv
 
-# Load .env BEFORE importing any app modules so that os.getenv() calls
-# at module level (e.g. DATABASE_URL in database.py) read the correct values.
 load_dotenv()
 
 from fastapi import FastAPI
@@ -13,7 +11,6 @@ from .api import query
 from .database import engine, Base
 from . import models
 
-# Create tables in PostgreSQL database on application startup
 try:
     Base.metadata.create_all(bind=engine)
 except Exception as e:

@@ -14,17 +14,9 @@ import {
 } from '../services/api';
 import { useUser, useTheme } from '../App';
 
-// ── helpers ────────────────────────────────────────────────────────
-
-/**
- * Renders a markdown string as structured React elements.
- * Supports: ### headings, **bold**, `inline code`, ``` code blocks,
- * - / * bullet lists, 1. numbered lists, --- dividers, plain paragraphs.
- */
 function renderMarkdown(text) {
   if (!text) return null;
 
-  // Split into lines and process block-level elements
   const lines = text.split('\n');
   const elements = [];
   let i = 0;
@@ -33,7 +25,6 @@ function renderMarkdown(text) {
   while (i < lines.length) {
     const line = lines[i];
 
-    // ── fenced code block ──────────────────────────────────────────
     if (line.trimStart().startsWith('```')) {
       const codeLines = [];
       i++;
@@ -58,11 +49,10 @@ function renderMarkdown(text) {
           {codeLines.join('\n')}
         </pre>
       );
-      i++; // skip closing ```
+      i++;
       continue;
     }
 
-    // ── horizontal rule ───────────────────────────────────────────
     if (/^---+$/.test(line.trim())) {
       elements.push(
         <hr key={key++} style={{ border: 'none', borderTop: '1px solid var(--glass-border)', margin: '8px 0' }} />
@@ -71,7 +61,6 @@ function renderMarkdown(text) {
       continue;
     }
 
-    // ── headings (### ## #) ───────────────────────────────────────
     const headingMatch = line.match(/^(#{1,3})\s+(.+)/);
     if (headingMatch) {
       const level = headingMatch[1].length;
@@ -94,7 +83,6 @@ function renderMarkdown(text) {
       continue;
     }
 
-    // ── bullet list ───────────────────────────────────────────────
     if (/^(\s*)([-*])\s+/.test(line)) {
       const listItems = [];
       while (i < lines.length && /^(\s*)([-*])\s+/.test(lines[i])) {
@@ -118,7 +106,6 @@ function renderMarkdown(text) {
       continue;
     }
 
-    // ── numbered list ─────────────────────────────────────────────
     if (/^\s*\d+\.\s+/.test(line)) {
       const listItems = [];
       while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) {
@@ -142,9 +129,7 @@ function renderMarkdown(text) {
       continue;
     }
 
-    // ── blank line ────────────────────────────────────────────────
     if (line.trim() === '') {
-      // only add spacing if previous element isn't already a spacer
       if (elements.length > 0) {
         elements.push(<div key={key++} style={{ height: '4px' }} />);
       }
@@ -152,7 +137,6 @@ function renderMarkdown(text) {
       continue;
     }
 
-    // ── paragraph ─────────────────────────────────────────────────
     elements.push(
       <p key={key++} style={{ margin: '2px 0', lineHeight: 1.65, color: 'var(--text-body)' }}>
         {inlineMarkdown(line)}
@@ -164,13 +148,8 @@ function renderMarkdown(text) {
   return <div style={{ fontSize: '0.85rem' }}>{elements}</div>;
 }
 
-/**
- * Processes inline markdown within a single line:
- * **bold**, *italic*, `code`
- */
 function inlineMarkdown(text) {
   if (!text) return null;
-  // Split on bold (**...**), italic (*...*), and inline code (`...`)
   const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
   return parts.map((part, idx) => {
     if (part.startsWith('**') && part.endsWith('**'))
@@ -216,7 +195,6 @@ function fileIcon(contentType = '') {
   return <File className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} />;
 }
 
-// ── Safety Confirm Modal ───────────────────────────────────────────
 function ConfirmModal({ action, doc, onConfirm, onCancel, loading }) {
   const isDelete = action === 'delete';
   return (
@@ -270,7 +248,6 @@ function ConfirmModal({ action, doc, onConfirm, onCancel, loading }) {
   );
 }
 
-// ── Edit Modal ─────────────────────────────────────────────────────
 function EditModal({ doc, onSave, onClose }) {
   const [form, setForm] = useState({
     filename: doc.original_filename,
@@ -350,7 +327,6 @@ function EditModal({ doc, onSave, onClose }) {
   );
 }
 
-// ── Upload Panel ───────────────────────────────────────────────────
 function UploadPanel({ onUploaded, onClose }) {
   const [file, setFile] = useState(null);
   const [desc, setDesc] = useState('');
@@ -385,7 +361,6 @@ function UploadPanel({ onUploaded, onClose }) {
         </button>
       </div>
 
-      {/* Drop zone */}
       <div onDrop={handleDrop} onDragOver={e => e.preventDefault()}
         onClick={() => inputRef.current.click()}
         className="rounded-xl p-5 text-center cursor-pointer transition-all duration-200"
@@ -430,7 +405,6 @@ function UploadPanel({ onUploaded, onClose }) {
   );
 }
 
-// ── AI Chat Panel ──────────────────────────────────────────────────
 function ChatPanel() {
   const [messages, setMessages] = useState([
     {
@@ -469,7 +443,6 @@ function ChatPanel() {
 
     if (res.success) {
       const { answer, sources } = res.data;
-      // Format source citations beneath the answer
       let fullText = answer;
       if (sources && sources.length > 0) {
         const cites = sources
@@ -492,7 +465,6 @@ function ChatPanel() {
 
   return (
     <div className="flex flex-col h-full" style={{ minHeight: 0 }}>
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-5 py-5 flex flex-col gap-4" style={{ minHeight: 0 }}>
         {messages.map((m, i) => (
           <div key={i} className={`flex gap-2.5 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
@@ -540,7 +512,6 @@ function ChatPanel() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
       <div className="px-4 pb-4 pt-3 flex-shrink-0" style={{ borderTop: '1px solid var(--glass-border)' }}>
         <div className="flex gap-2 items-end">
           <textarea
@@ -566,14 +537,11 @@ function ChatPanel() {
   );
 }
 
-// ── Analysis Panel ─────────────────────────────────────────────────
 function AnalysisPanel({ docs }) {
-  // ── derived stats ──────────────────────────────────────────────
   const stats = useMemo(() => {
     const total = docs.length;
     const totalSize = docs.reduce((s, d) => s + d.size, 0);
 
-    // file type breakdown
     const typeMap = {};
     docs.forEach(d => {
       const key = d.content_type.split('/')[0] || 'other';
@@ -583,7 +551,6 @@ function AnalysisPanel({ docs }) {
       .sort((a, b) => b[1] - a[1])
       .map(([label, count]) => ({ label, count, pct: total ? Math.round((count / total) * 100) : 0 }));
 
-    // tag cloud
     const tagMap = {};
     docs.forEach(d => {
       if (!d.tags) return;
@@ -596,12 +563,10 @@ function AnalysisPanel({ docs }) {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 20);
 
-    // recent uploads (last 5)
     const recent = [...docs]
       .sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at))
       .slice(0, 5);
 
-    // largest files (top 5)
     const largest = [...docs]
       .sort((a, b) => b.size - a.size)
       .slice(0, 5);
@@ -630,7 +595,6 @@ function AnalysisPanel({ docs }) {
 
   return (
     <div className="flex flex-col h-full overflow-y-auto" style={{ minHeight: 0 }}>
-      {/* Header */}
       <div className="flex items-center gap-3 px-5 py-4 flex-shrink-0"
         style={{ borderBottom: '1px solid var(--glass-border)' }}>
         <div className="w-9 h-9 rounded-xl flex items-center justify-center"
@@ -645,7 +609,6 @@ function AnalysisPanel({ docs }) {
 
       <div className="px-5 py-4 flex flex-col gap-5">
 
-        {/* ── KPI cards ── */}
         <div className="grid grid-cols-2 gap-3">
           {[
             { label: 'Total Files',    value: stats.total,                    icon: <FileText  className="w-4 h-4" />, color: 'var(--accent-primary)' },
@@ -664,7 +627,6 @@ function AnalysisPanel({ docs }) {
           ))}
         </div>
 
-        {/* ── File type breakdown ── */}
         <div className="glass-panel-3d rounded-xl p-4" style={{ border: '1px solid var(--glass-border)' }}>
           <p className="font-heading font-bold text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--text-main)' }}>
             <PieChart className="w-4 h-4" style={{ color: 'var(--accent-primary)' }} /> File Type Breakdown
@@ -685,7 +647,6 @@ function AnalysisPanel({ docs }) {
           </div>
         </div>
 
-        {/* ── Tag cloud ── */}
         {stats.tags.length > 0 && (
           <div className="glass-panel-3d rounded-xl p-4" style={{ border: '1px solid var(--glass-border)' }}>
             <p className="font-heading font-bold text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--text-main)' }}>
@@ -708,7 +669,6 @@ function AnalysisPanel({ docs }) {
           </div>
         )}
 
-        {/* ── Largest files ── */}
         <div className="glass-panel-3d rounded-xl p-4" style={{ border: '1px solid var(--glass-border)' }}>
           <p className="font-heading font-bold text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--text-main)' }}>
             <TrendingUp className="w-4 h-4" style={{ color: 'var(--accent-cyan)' }} /> Largest Files
@@ -727,7 +687,6 @@ function AnalysisPanel({ docs }) {
           </div>
         </div>
 
-        {/* ── Recent uploads ── */}
         <div className="glass-panel-3d rounded-xl p-4" style={{ border: '1px solid var(--glass-border)' }}>
           <p className="font-heading font-bold text-sm mb-3 flex items-center gap-2" style={{ color: 'var(--text-main)' }}>
             <Clock className="w-4 h-4" style={{ color: 'var(--accent-emerald)' }} /> Recent Uploads
@@ -748,7 +707,6 @@ function AnalysisPanel({ docs }) {
   );
 }
 
-// ── Document Row ───────────────────────────────────────────────────
 function DocRow({ doc, onEdit, onDelete }) {
   const [expanded, setExpanded] = useState(false);
   return (
@@ -760,7 +718,6 @@ function DocRow({ doc, onEdit, onDelete }) {
         border: '1px solid var(--glass-border)',
         boxShadow: '0 8px 32px -8px rgba(2,132,199,0.12), 0 0 0 1px rgba(0,180,255,0.08) inset, inset 0 1px 1px var(--glass-highlight)',
       }}>
-      {/* Main row */}
       <div className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
         onClick={() => setExpanded(e => !e)}>
         <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -779,7 +736,6 @@ function DocRow({ doc, onEdit, onDelete }) {
           style={{ color: 'var(--text-dim)', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }} />
       </div>
 
-      {/* Expanded details */}
       {expanded && (
         <div className="px-4 pb-4 pt-2 flex flex-col gap-3"
           style={{ borderTop: '1px solid var(--glass-border)' }}>
@@ -804,7 +760,6 @@ function DocRow({ doc, onEdit, onDelete }) {
             )}
           </div>
 
-          {/* Action buttons */}
           <div className="flex gap-2 pt-1" style={{ minHeight: '36px' }}>
             <a
               href={downloadDocumentUrl(doc.id)}
@@ -833,25 +788,22 @@ function DocRow({ doc, onEdit, onDelete }) {
   );
 }
 
-// ── Main Admin Page ────────────────────────────────────────────────
 export default function AdminPage() {
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
-  const [toast, setToast] = useState(null);   // { type: 'success'|'error', text }
+  const [toast, setToast] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [search, setSearch] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
-  const [rightTab, setRightTab] = useState('chat'); // 'chat' | 'analysis'
+  const [rightTab, setRightTab] = useState('chat');
 
-  // ── Resizable panels ──────────────────────────────────────────────
-  // layout: 'split' | 'left-full' | 'right-full'
   const [layout, setLayout] = useState('split');
-  const [leftWidth, setLeftWidth] = useState(400); // px, used only in split mode
-  const MIN_W = 260;  // minimum width for either panel
+  const [leftWidth, setLeftWidth] = useState(400);
+  const MIN_W = 260;
   const bodyRef = useRef(null);
   const dragRef = useRef({ active: false, startX: 0, startW: 0 });
 
@@ -954,7 +906,6 @@ export default function AdminPage() {
   return (
     <div className="flex flex-col h-screen relative z-10 overflow-hidden" style={{ fontFamily: 'var(--font-body)' }}>
 
-      {/* ── Admin Header Bar ─────────────────────────────────────── */}
       <header className="flex-shrink-0 flex items-center justify-between px-5 py-3"
         style={{
           background: 'var(--bg-card)',
@@ -963,7 +914,6 @@ export default function AdminPage() {
           boxShadow: '0 1px 0 rgba(0,180,255,0.08)',
         }}>
 
-        {/* Brand */}
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl p-0.5 shadow-md"
             style={{ background: 'linear-gradient(135deg, var(--btn-grad-from), var(--accent-primary))' }}>
@@ -983,7 +933,6 @@ export default function AdminPage() {
             </span>
           </div>
 
-          {/* Admin badge */}
           <span className="ml-2 text-[10px] font-mono px-2.5 py-1 rounded-full hidden sm:inline-flex items-center gap-1.5"
             style={{
               background: 'rgba(109,40,217,0.10)',
@@ -995,9 +944,7 @@ export default function AdminPage() {
           </span>
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-2">
-          {/* Theme toggle */}
           <button onClick={toggle} className="theme-toggle"
             title={dark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             aria-label="Toggle theme">
@@ -1007,7 +954,6 @@ export default function AdminPage() {
             }
           </button>
 
-          {/* Logout */}
           <button onClick={handleLogout}
             className="btn-glass-sm flex items-center gap-2"
             style={{
@@ -1030,10 +976,8 @@ export default function AdminPage() {
         </div>
       </header>
 
-      {/* ── Two-panel body ───────────────────────────────────────── */}
       <div ref={bodyRef} className="flex flex-1 overflow-hidden" style={{ position: 'relative' }}>
 
-      {/* ── Left Panel: Documents ────────────────────────────────── */}
       <div className="flex flex-col flex-shrink-0 h-full transition-all duration-200"
         style={{
           width: layout === 'left-full'  ? '100%'
@@ -1046,10 +990,8 @@ export default function AdminPage() {
           backdropFilter: 'blur(20px)',
         }}>
 
-        {/* Left Header */}
         <div className="flex items-center gap-3 px-4 py-4 flex-shrink-0"
           style={{ borderBottom: '1px solid var(--glass-border)' }}>
-          {/* Menu Button */}
           <div className="relative">
             <button onClick={() => setMenuOpen(m => !m)}
               className="theme-toggle w-9 h-9 flex items-center justify-center"
@@ -1089,7 +1031,6 @@ export default function AdminPage() {
             <FilePlus className="w-3.5 h-3.5" /> Upload
           </button>
 
-          {/* Maximize / Restore button */}
           <button
             onClick={() => setLayout(l => l === 'left-full' ? 'split' : 'left-full')}
             className="theme-toggle w-8 h-8 flex items-center justify-center flex-shrink-0"
@@ -1101,7 +1042,6 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {/* Search */}
         <div className="px-4 py-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--glass-border)' }}>
           <div className="relative">
             <input className="field-input pl-9 text-sm" placeholder="Search by name, tag, description…"
@@ -1110,14 +1050,12 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Upload panel (inline) */}
         {showUpload && (
           <div className="px-4 pt-4 flex-shrink-0">
             <UploadPanel onUploaded={handleUploaded} onClose={() => setShowUpload(false)} />
           </div>
         )}
 
-        {/* DB Safety Banner */}
         <div className="mx-4 mt-3 mb-1 rounded-xl px-3 py-2 flex items-center gap-2 flex-shrink-0"
           style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}>
           <Shield className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#b45309' }} />
@@ -1126,7 +1064,6 @@ export default function AdminPage() {
           </p>
         </div>
 
-        {/* Document list */}
         <div className="flex-1 overflow-y-auto px-4 pb-4 pt-2 flex flex-col gap-2">
           {loading && (
             <div className="flex flex-col items-center justify-center h-full gap-3 py-12">
@@ -1160,7 +1097,6 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* ── Drag divider ─────────────────────────────────────────── */}
       {layout === 'split' && (
         <div
           onMouseDown={e => { e.preventDefault(); startDrag(e.clientX); }}
@@ -1180,7 +1116,6 @@ export default function AdminPage() {
         />
       )}
 
-      {/* ── Right Panel: Chat / Analysis tabs ───────────────────── */}
       <div className="flex flex-1 flex-col h-full transition-all duration-200"
         style={{
           background: 'var(--bg-page)',
@@ -1191,7 +1126,6 @@ export default function AdminPage() {
           height: layout === 'left-full' ? 'none' : 'flex',
         }}>
 
-        {/* Tab bar */}
         <div className="flex items-center flex-shrink-0 px-4 pt-2 gap-2"
           style={{ borderBottom: '1px solid var(--glass-border)', background: 'var(--bg-card)' }}>
           <div className="flex gap-2 flex-1">
@@ -1214,7 +1148,6 @@ export default function AdminPage() {
             ))}
           </div>
 
-          {/* Maximize / Restore button */}
           <button
             onClick={() => setLayout(l => l === 'right-full' ? 'split' : 'right-full')}
             className="theme-toggle w-8 h-8 flex items-center justify-center flex-shrink-0 mb-1"
@@ -1226,7 +1159,6 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {/* Tab content */}
         <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
           {rightTab === 'chat'     && <ChatPanel />}
           {rightTab === 'analysis' && <AnalysisPanel docs={docs} />}
@@ -1234,9 +1166,8 @@ export default function AdminPage() {
 
       </div>
 
-      </div>{/* end two-panel body */}
+      </div>
 
-      {/* ── Modals ───────────────────────────────────────────────── */}
       {editTarget && (
         <EditModal doc={editTarget} onClose={() => setEditTarget(null)} onSave={handleEdit} />
       )}
@@ -1245,7 +1176,6 @@ export default function AdminPage() {
           onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} />
       )}
 
-      {/* ── Toast ────────────────────────────────────────────────── */}
       {toast && (
         <div className={`fixed bottom-6 right-6 z-50 px-5 py-3.5 rounded-xl flex items-center gap-3 text-sm shadow-xl transition-all duration-300 ${
             toast.type === 'success' ? 'alert-success' : 'alert-error'
@@ -1258,7 +1188,6 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Backdrop to close dropdown menu */}
       {menuOpen && (
         <div className="fixed inset-0 z-20" onClick={() => setMenuOpen(false)} />
       )}
