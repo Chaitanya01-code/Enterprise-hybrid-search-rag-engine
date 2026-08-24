@@ -1,7 +1,6 @@
+
+
 from dotenv import load_dotenv
-
-load_dotenv()
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .api import auth
@@ -10,13 +9,14 @@ from .api import user
 from .api import query
 from .database import engine, Base
 from . import models
+load_dotenv()
+app = FastAPI()
 
 try:
     Base.metadata.create_all(bind=engine)
 except Exception as e:
     print(f"Warning: Database table initialization notice: {e}")
 
-app = FastAPI()
 
 app.include_router(auth.router, tags=["auth"])
 app.include_router(admin.router, prefix="/admin", tags=["admin"])

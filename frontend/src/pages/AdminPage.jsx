@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import {
   listDocuments, uploadDocument, editDocument,
-  deleteDocument, downloadDocumentUrl, sendQuery,
+  deleteDocument, downloadDocument, sendQuery,
 } from '../services/api';
 import { useUser, useTheme } from '../App';
 
@@ -709,6 +709,15 @@ function AnalysisPanel({ docs }) {
 
 function DocRow({ doc, onEdit, onDelete }) {
   const [expanded, setExpanded] = useState(false);
+  const [downloadError, setDownloadError] = useState(null);
+
+  const handleDownload = async (event) => {
+    event.stopPropagation();
+    setDownloadError(null);
+    const result = await downloadDocument(doc.id, doc.original_filename);
+    if (!result.success) setDownloadError(result.error || 'Download failed.');
+  };
+
   return (
     <div className="rounded-xl transition-all duration-200"
       style={{
@@ -760,15 +769,19 @@ function DocRow({ doc, onEdit, onDelete }) {
             )}
           </div>
 
+          {downloadError && (
+            <div className="alert-error text-xs">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />{downloadError}
+            </div>
+          )}
+
           <div className="flex gap-2 pt-1" style={{ minHeight: '36px' }}>
-            <a
-              href={downloadDocumentUrl(doc.id)}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              onClick={handleDownload}
               className="btn-glass-secondary btn-glass-sm flex items-center gap-1.5 text-xs flex-1 justify-center"
               style={{ minWidth: 0 }}>
               <Download className="w-3.5 h-3.5" /><span>Download</span>
-            </a>
+            </button>
             <button
               onClick={e => { e.stopPropagation(); onEdit(doc); }}
               className="btn-glass-secondary btn-glass-sm flex items-center gap-1.5 text-xs flex-1 justify-center"

@@ -51,7 +51,25 @@ export const deleteDocument = async (id) => {
   }
 };
 
-export const downloadDocumentUrl = (id) => `${BACKEND_URL}/admin/documents/${id}/download`;
+export const downloadDocument = async (id, filename) => {
+  try {
+    const res = await axios.get(`${BACKEND_URL}/admin/documents/${id}/download`, {
+      responseType: 'blob',
+      headers: { 'X-User-Role': 'admin' },
+    });
+    const url = URL.createObjectURL(res.data);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.response?.data?.detail || error.message };
+  }
+};
 
 export const checkBackendHealth = async () => {
   try {
